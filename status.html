@@ -18,6 +18,7 @@
   --radius:12px;--gap:24px;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
+/* ----  BUILT-IN THEMES  ---- */
 [data-theme="light"]{
   --bg:#ffffff;--card:#f6f8fa;--card2:#f6f8fa;--tooltip:#f6f8fa;
   --border:#d0d7de;--text:#24292f;--subtle:#656d76;--accent:#0969da;
@@ -29,6 +30,54 @@
   --border:#3c1e5c;--text:#e2d5f3;--subtle:#a18daf;--accent:#a78bfa;
   --ok:#34d399;--down:#f87272;--warning:#fbbf24;--paused:#fde047;
   --maintenance:#c084fc;--unknown:#6b7280;--unlinked:#4b5563;
+}
+[data-theme="green"]{
+  --bg:#021a03;--card:#063a06;--card2:#042b04;--tooltip:#042b04;
+  --border:#166416;--text:#dcfce7;--subtle:#a7f3d0;--accent:#4ade80;
+  --ok:#22c55e;--down:#ef4444;--warning:#f59e0b;--paused:#fcd34d;
+  --maintenance:#818cf8;--unknown:#6b7280;--unlinked:#4b5563;
+}
+[data-theme="blue"]{
+  --bg:#00172a;--card:#003355;--card2:#002944;--tooltip:#002944;
+  --border:#005c99;--text:#e0f2fe;--subtle:#7dd3fc;--accent:#38bdf8;
+  --ok:#22d3ee;--down:#f43f5e;--warning:#facc15;--paused:#fde047;
+  --maintenance:#818cf8;--unknown:#64748b;--unlinked:#475569;
+}
+[data-theme="dark-rosa"]{
+  --bg:#1c0615;--card:#3b0f2b;--card2:#2e0b22;--tooltip:#2e0b22;
+  --border:#6b1d4f;--text:#fce7f3;--subtle:#f9a8d4;--accent:#f472b6;
+  --ok:#34d399;--down:#fb7185;--warning:#fbbf24;--paused:#fde047;
+  --maintenance:#c084fc;--unknown:#6b7280;--unlinked:#4b5563;
+}
+[data-theme="light-rosa"]{
+  --bg:#fff1f2;--card:#ffe4e6;--card2:#fed7da;--tooltip:#fed7da;
+  --border:#fda4af;--text:#881337;--subtle:#f43f5e;--accent:#ec4899;
+  --ok:#10b981;--down:#e11d48;--warning:#f59e0b;--paused:#fcd34d;
+  --maintenance:#8b5cf6;--unknown:#9ca3af;--unlinked:#6b7280;
+}
+[data-theme="halloween"]{
+  --bg:#1c110a;--card:#3a200f;--card2:#2c180a;--tooltip:#2c180a;
+  --border:#7c3f0f;--text:#fbbf24;--subtle:#fdba74;--accent:#f97316;
+  --ok:#84cc16;--down:#dc2626;--warning:#f59e0b;--paused:#fde047;
+  --maintenance:#a855f7;--unknown:#6b7280;--unlinked:#4b5563;
+}
+[data-theme="christmas"]{
+  --bg:#0f1a0f;--card:#1a3a1a;--card2:#122912;--tooltip:#122912;
+  --border:#166534;--text:#dcfce7;--subtle:#86efac;--accent:#22c55e;
+  --ok:#22c55e;--down:#ef4444;--warning:#fbbf24;--paused:#fde047;
+  --maintenance:#818cf8;--unknown:#6b7280;--unlinked:#4b5563;
+}
+[data-theme="hack"]{
+  --bg:#000;--card:#0d0d0d;--card2:#0a0a0a;--tooltip:#0a0a0a;
+  --border:#00ff00;--text:#00ff00;--subtle:#39ff14;--accent:#00ff41;
+  --ok:#00ff00;--down:#ff073a;--warning:#ffaa00;--paused:#fff500;
+  --maintenance:#0ff;--unknown:#7c7c7c;--unlinked:#555;
+}
+[data-theme="neon"]{
+  --bg:#0d0221;--card:#1d1033;--card2:#160b26;--tooltip:#160b26;
+  --border:#6e44ff;--text:#f0f;--subtle:#ff44cc;--accent:#00f7ff;
+  --ok:#00ff89;--down:#ff2a6d;--warning:#ffe74c;--paused:#f5ff90;
+  --maintenance:#05d9e8;--unknown:#8c8c8c;--unlinked:#555;
 }
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column;align-items:center;padding:40px 0}
 a{color:var(--accent);text-decoration:none}
@@ -111,10 +160,19 @@ a:hover{text-decoration:underline}
 
 <div class="offline-banner" id="offlineBanner">You’re offline – data may be stale</div>
 
+<!--  vertical theme switcher  -->
 <div class="theme-switcher" aria-label="Theme switcher">
   <button class="theme-btn" data-theme="dark" title="Dark">🌙</button>
   <button class="theme-btn" data-theme="light" title="Light">☀️</button>
   <button class="theme-btn" data-theme="dark-purple" title="Dark Purple">🟣</button>
+  <button class="theme-btn" data-theme="green" title="Green">🟢</button>
+  <button class="theme-btn" data-theme="blue" title="Blue">🔵</button>
+  <button class="theme-btn" data-theme="dark-rosa" title="Dark Rosa">🌸</button>
+  <button class="theme-btn" data-theme="light-rosa" title="Light Rosa">💗</button>
+  <button class="theme-btn" data-theme="halloween" title="Halloween">🎃</button>
+  <button class="theme-btn" data-theme="christmas" title="Christmas">🎄</button>
+  <button class="theme-btn" data-theme="hack" title="Hack">👾</button>
+  <button class="theme-btn" data-theme="neon" title="Neon">🌆</button>
 </div>
 
 <div class="header">
