@@ -253,13 +253,17 @@ const timeAgo = ts=>{
   return`${d} day${d>1?'s':''} ago`;
 };
 
+/* ----------  theme switcher  ---------- */
 document.addEventListener('click', e=>{
   if(!e.target.matches('.theme-btn')) return;
   const th = e.target.dataset.theme;
   document.documentElement.setAttribute('data-theme', th);
   localStorage.setItem('theme', th);
 });
-(()=>{ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();
+(()=>{
+  const th = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', th);
+})();
 
 window.addEventListener('online', ()=> $('#offlineBanner').style.display='none');
 window.addEventListener('offline', ()=> $('#offlineBanner').style.display='block');
