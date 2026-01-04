@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#161b22"/>
+<meta name="description" content="Public status page"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg ' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%2300c17c'/></svg>"/>
+<title>Status</title>
+
+<style>
+/* (Your original look, mostly preserved) */
+:root{
+  --bg:#000000;--card:#161b22;--card2:#11141e;--tooltip:#11141e;
+  --border:#30363d;--text:#c9d1d9;--subtle:#8b949e;--accent:#58a6ff;
+  --ok:#00c17c;--down:#d2344e;--warning:#f0a500;--paused:#f0de4e;
+  --maintenance:#6a42f5;--unknown:#777;--unlinked:#555a66;
+  --radius:12px;--gap:24px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#ffffff;--card:#f6f8fa;--card2:#f6f8fa;--tooltip:#f6f8fa;
+  --border:#d0d7de;--text:#24292f;--subtle:#656d76;--accent:#0969da;
+  --ok:#1a7f37;--down:#d1242f;--warning:#d4a72c;--paused:#bf8700;
+  --maintenance:#8250df;--unknown:#656d76;--unlinked:#8c959f;
+}
+[data-theme="dark-purple"]{
+  --bg:#0b0514;--card:#1f0e33;--card2:#180b26;--tooltip:#180b26;
+  --border:#3c1e5c;--text:#e2d5f3;--subtle:#a18daf;--accent:#a78bfa;
+  --ok:#34d399;--down:#f87272;--warning:#fbbf24;--paused:#fde047;
+  --maintenance:#c084fc;--unknown:#6b7280;--unlinked:#4b5563;
+}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column;align-items:center;padding:40px 0}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.header{width:780px;max-width:95%;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.brand{display:flex;flex-direction:column;gap:4px}
+.brand h1{margin:0;font-size:18px}
+.brand .sub{color:var(--subtle);font-size:13px}
+.project-pill{display:inline-flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:8px 12px;font-size:13px}
+.project-pill code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:var(--subtle)}
+
+.theme-switcher{position:fixed;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:6px;z-index:2000}
+.theme-btn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;cursor:pointer;font-size:13px;transition:border-color .2s}
+.theme-btn:hover{border-color:var(--accent)}
+.offline-banner{display:none;position:sticky;top:0;width:100%;background:var(--down);color:#fff;text-align:center;padding:8px;font-size:13px;z-index:1500}
+
+#generalStatusBar{width:780px;max-width:95%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+#generalStatusText{display:flex;align-items:center;gap:10px;font-weight:700}
+#generalStatusIcon{width:10px;height:10px;border-radius:50%}
+#generalLastUpdated{color:var(--subtle);font-size:13px}
+#generalAnnouncement{display:none;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14px;white-space:pre-wrap}
+
+.status-container{width:780px;max-width:95%;display:flex;flex-direction:column;gap:16px;margin-top:var(--gap)}
+.app-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px}
+.top-bar{display:flex;align-items:center;gap:10px;font-weight:700;margin-bottom:10px}
+.status-icon{width:10px;height:10px;border-radius:50%;background:var(--unlinked)}
+.status-icon.operational{background:var(--ok)}
+.status-icon.down{background:var(--down)}
+.status-icon.degraded{background:var(--warning)}
+.status-icon.paused{background:var(--paused)}
+.status-icon.maintenance{background:var(--maintenance)}
+.status-icon.unknown{background:var(--unknown)}
+.status-icon.unlinked{background:var(--unlinked)}
+
+.status-bar-container{display:flex;flex-direction:column;gap:4px}
+.status-bar{display:flex;gap:3px}
+.day-labels{display:flex;gap:3px;font-size:12px;color:var(--subtle)}
+.day-label{width:48px;text-align:center}
+.label-start,.label-end{font-weight:600;color:var(--text)}
+.bar-box{width:48px;height:14px;border-radius:4px;background:var(--ok);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.bar-box.down{background:var(--down)}
+.bar-box.degraded{background:var(--warning)}
+.bar-box.paused{background:var(--paused)}
+.bar-box.maintenance{background:var(--maintenance)}
+.bar-box.unknown{background:var(--unknown)}
+.bar-box.unlinked{background:var(--unlinked)}
+.bar-box:hover{transform:scale(1.05)}
+#statusTooltip{position:fixed;background:var(--tooltip);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:1000;max-width:280px;line-height:1.4}
+
+.timeline-container{width:780px;max-width:95%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-top:var(--gap)}
+.timeline-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gap)}
+.timeline-title{font-size:18px;font-weight:700;color:var(--warning)}
+.period-selector{background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;transition:border-color .2s}
+.period-selector:hover{border-color:var(--accent)}
+.period-selector:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(88,166,255,.18)}
+.timeline{position:relative;padding-left:24px}
+.timeline::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--border)}
+.timeline-item{position:relative;padding-bottom:var(--gap);animation:fadeIn .3s ease both}
+.timeline-item::before{content:"";position:absolute;left:-24px;top:8px;width:12px;height:12px;border-radius:50%;background:var(--border);border:3px solid var(--bg);transform:translateX(-50%)}
+.timeline-item.success::before{background:var(--ok)}
+.timeline-item.warning::before{background:var(--warning)}
+.timeline-item.danger::before{background:var(--down)}
+.timeline-item.info::before{background:var(--accent)}
+.timeline-content{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:16px}
+.timeline-time{font-size:12px;color:var(--subtle);margin-bottom:6px;font-weight:500}
+.timeline-title{font-weight:600;margin-bottom:6px;font-size:15px}
+.timeline-description{color:var(--subtle);font-size:14px;line-height:1.5;white-space:pre-wrap}
+.timeline-meta{display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--subtle);align-items:center}
+.timeline-badge{background:#21262d;border:1px solid var(--border);border-radius:12px;padding:4px 8px;font-size:11px;font-weight:600}
+.copy-btn{margin-left:auto;background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:12px}
+.copy-btn:hover{text-decoration:underline}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (max-width:800px){body{padding:24px 0}}
+</style>
+</head>
+<body>
+
+<div class="offline-banner" id="offlineBanner">You’re offline – data may be stale</div>
+
+<div class="theme-switcher" aria-label="Theme switcher">
+  <button class="theme-btn" data-theme="dark" title="Dark">🌙</button>
+  <button class="theme-btn" data-theme="light" title="Light">☀️</button>
+  <button class="theme-btn" data-theme="dark-purple" title="Dark Purple">🟣</button>
+</div>
+
+<div class="header">
+  <div class="brand">
+    <h1 id="projectName">Loading…</h1>
+    <div class="sub" id="projectSubtitle">Public status</div>
+  </div>
+  <div class="project-pill" title="Project reference">
+    <span>Project</span>
+    <code id="projectRef">—</code>
+  </div>
+</div>
+
+<div id="generalStatusBar" role="region" aria-label="General status">
+  <div id="generalStatusText">
+    <div id="generalStatusIcon" aria-hidden="true"></div>
+    <span id="generalStatusLabel">Loading status…</span>
+  </div>
+  <div id="generalLastUpdated" aria-live="polite">Loading update time…</div>
+  <div id="generalAnnouncement" role="note"></div>
+</div>
+
+<div class="status-container" id="statusContainer" role="region" aria-label="Services status">
+  <div class="app-section">
+    <div class="top-bar"><span class="status-icon"></span><span>Loading…</span></div>
+    <div class="status-bar-container">
+      <div class="status-bar">
+        <div class="bar-box unlinked"></div><div class="bar-box unlinked"></div><div class="bar-box unlinked"></div>
+        <div class="bar-box unlinked"></div><div class="bar-box unlinked"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="timeline-container" role="region" aria-label="Recent activity">
+  <div class="timeline-header">
+    <h2 class="timeline-title">Recent Activity</h2>
+    <select class="period-selector" id="activityPeriod" aria-label="Select time period">
+      <option value="24h">Last 24 hours</option>
+      <option value="7d" selected>Last 7 days</option>
+      <option value="30d">Last 30 days</option>
+      <option value="90d">Last 90 days</option>
+      <option value="120d">Last 120 days</option>
+    </select>
+  </div>
+  <div class="timeline" id="activityTimeline" aria-live="polite"></div>
+  <div id="loadMore" style="text-align:center;padding:12px;color:var(--subtle);cursor:pointer;display:none;">Load more</div>
+</div>
+
+<div id="statusTooltip" role="tooltip"></div>
+
+<!-- Firebase (modular) -->
+<script type="module">
+import { app, auth, db } from "./firebase.js";
+import {
+  ref, onValue, get, query, orderByChild, equalTo, limitToFirst
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+const $ = q => document.querySelector(q);
+const copyText = str => navigator.clipboard?.writeText(str).catch(()=>{});
+const timeAgo = ts=>{
+  const sec=Math.floor((Date.now()-ts)/1000);
+  if(sec<60)return`${sec}s ago`;
+  const min=Math.floor(sec/60);
+  if(min<60)return`${min}m ago`;
+  const h=Math.floor(min/60);
+  if(h<24)return`${h}h ago`;
+  const d=Math.floor(h/24);
+  return`${d} day${d>1?'s':''} ago`;
+};
+
+document.addEventListener('click', e=>{
+  if(!e.target.matches('.theme-btn')) return;
+  const th = e.target.dataset.theme;
+  document.documentElement.setAttribute('data-theme', th);
+  localStorage.setItem('theme', th);
+});
+(()=>{ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();
+
+window.addEventListener('online', ()=> $('#offlineBanner').style.display='none');
+window.addEventListener('offline', ()=> $('#offlineBanner').style.display='block');
+
+const MAX_DAYS = 14;
+const STATUS_NAMES = { operational:'Operational', down:'Down', degraded:'Degraded', paused:'Paused', maintenance:'Maintenance', unknown:'Unknown', unlinked:'Unlinked' };
+
+const tip = $('#statusTooltip');
+function showTooltip(e, html){ tip.innerHTML = html; tip.style.opacity='1'; positionTooltip(e); }
+function hideTooltip(){ tip.style.opacity='0'; }
+function positionTooltip(e){
+  const pad=12; let x=e.clientX+pad, y=e.clientY+pad;
+  const r=tip.getBoundingClientRect();
+  if(x+r.width+pad>window.innerWidth) x=e.clientX-r.width-pad;
+  if(y+r.height+pad>window.innerHeight) y=e.clientY-r.height-pad;
+  tip.style.left = x+'px'; tip.style.top  = y+'px';
+}
+
+function periodToHours(p){ 
+  return { '24h':24,'7d':168,'30d':720,'90d':2160,'120d':2880 }[p] || 168; 
+}
+
+function renderBars(service){
+  const today = new Date().toISOString().split('T')[0];
+  let boxes=[], labels=[];
+  for(let i=MAX_DAYS-1;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const ds=d.toISOString().split('T')[0];
+    let status='unlinked';
+    const v = service.history?.[ds];
+    if(v){ status = (typeof v==='string') ? v : (v.status||'unknown'); }
+    const cls=status==='operational'?'operational':status;
+    boxes.push(`<div class="bar-box ${cls}" data-status="${status}" data-date="${ds}" aria-label="${d.toLocaleDateString()} ${STATUS_NAMES[status]}"></div>`);
+    if(i===MAX_DAYS-1) labels.push(`<div class="day-label label-start">${MAX_DAYS} days ago</div>`);
+    else if(i===0)     labels.push(`<div class="day-label label-end">Today</div>`);
+    else               labels.push('<div class="day-label"></div>');
+  }
+  return `<div class="status-bar-container"><div class="status-bar">${boxes.join('')}</div><div class="day-labels">${labels.join('')}</div></div>`;
+}
+
+function renderServiceSection(service){
+  const today = new Date().toISOString().split('T')[0];
+  let todayStatus='unlinked';
+  const v = service.history?.[today];
+  if(v){ todayStatus = (typeof v==='string') ? v : (v.status||'unknown'); }
+  const cls=todayStatus==='operational'?'operational':todayStatus;
+  return `<div class="app-section">
+    <div class="top-bar"><span class="status-icon ${cls}" aria-hidden="true"></span><span>${escapeHtml(service.name||'Unnamed Service')}</span></div>
+    ${renderBars(service)}
+  </div>`;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function updateGeneralStatus(services){
+  const icon=$('#generalStatusIcon'), label=$('#generalStatusLabel'), last=$('#generalLastUpdated');
+  const list = Object.values(services||{});
+  if(list.length===0){ label.textContent='No services available'; icon.style.backgroundColor='#777'; last.textContent=''; return; }
+  const todayStr=new Date().toISOString().split('T')[0];
+  const statusSet=new Set(); let newestUpdate=0;
+  list.forEach(s=>{
+    if(s.lastUpdated&&s.lastUpdated>newestUpdate) newestUpdate=s.lastUpdated;
+    const todayData=s.history?.[todayStr];
+    let todayStatus='unlinked';
+    if(todayData){ if(typeof todayData==='string') todayStatus=todayData; else if(todayData.status) todayStatus=todayData.status; }
+    if(!['unknown','unlinked',undefined].includes(todayStatus)) statusSet.add(todayStatus);
+  });
+  const statuses=[...statusSet];
+  if(statuses.includes('down')) icon.style.backgroundColor='var(--down)';
+  else if(statuses.includes('degraded')) icon.style.backgroundColor='var(--warning)';
+  else if(statuses.includes('paused')) icon.style.backgroundColor='var(--paused)';
+  else if(statuses.includes('maintenance')) icon.style.backgroundColor='var(--maintenance)';
+  else icon.style.backgroundColor='var(--ok)';
+  if(statuses.length===0||(statuses.length===1&&statuses[0]==='operational')) label.textContent='All services are online';
+  else{
+    const readable={down:'down',degraded:'degraded',paused:'paused',maintenance:'under maintenance'};
+    const statusWords=statuses.filter(s=>s!=='operational').map(s=>readable[s]||(s.charAt(0).toUpperCase()+s.slice(1)));
+    label.textContent=`Some services are ${statusWords.join(' or ')}`;
+  }
+  last.textContent=newestUpdate?`Last updated ${timeAgo(newestUpdate)}`:'';
+}
+
+function updateAnnouncement(text){
+  const el=$('#generalAnnouncement');
+  if(text?.trim()){ el.style.display='block'; el.textContent=text; } else el.style.display='none';
+}
+
+/* ----- Activity timeline (based on your original logic) ----- */
+let timelineAll = [];
+let timelineRendered = 0;
+let lastTimelineHash = '';
+let noMoreEvents = false;
+const PER_PAGE = 25;
+
+function buildMasterTimeline(services, period){
+  const hrs = periodToHours(period);
+  const now = Date.now();
+  const ev = [];
+  Object.values(services||{}).forEach(s=>{
+    if(!s.history) return;
+    Object.entries(s.history).forEach(([ds,val])=>{
+      let t = new Date(ds).getTime();
+      if(typeof val === 'object' && val.timestamp) t = val.timestamp;
+      else if(s.lastUpdated){
+        const lastUpDate = new Date(s.lastUpdated).toISOString().split('T')[0];
+        if(ds===lastUpDate) t = s.lastUpdated;
+      }
+      if((now - t)/36e5 > hrs) return;
+
+      const st = (typeof val==='string') ? val : (val.status||'unknown');
+      const note = (typeof val==='object') ? (val.notes||'') : '';
+      const ver  = (typeof val==='object') ? (val.version||'N/A') : 'N/A';
+      const type = st==='down'?'danger':st==='degraded'?'warning':st==='maintenance'?'info':'success';
+      ev.push({
+        type,
+        time: t,
+        title: `${s.name} – ${STATUS_NAMES[st]||st}`,
+        description: note || `Service status changed to ${st}`,
+        service: s.name,
+        version: ver
+      });
+    });
+  });
+  ev.sort((a,b)=>b.time-a.time);
+  timelineAll = ev;
+  timelineRendered = 0;
+  noMoreEvents = false;
+}
+
+function renderNextTimelineSlice(){
+  if(noMoreEvents) return;
+  const slice = timelineAll.slice(timelineRendered, timelineRendered+PER_PAGE);
+  const tl = $('#activityTimeline');
+  if(slice.length===0){ noMoreEvents=true; $('#loadMore').style.display='none'; return; }
+
+  const html = slice.map((e,i)=>`
+    <div class="timeline-item ${e.type}" style="animation-delay:${(timelineRendered+i)*.05}s">
+      <div class="timeline-content">
+        <div class="timeline-time">${timeAgo(e.time)}</div>
+        <div class="timeline-title">${escapeHtml(e.title)}</div>
+        <div class="timeline-description">${escapeHtml(e.description)}</div>
+        <div class="timeline-meta">
+          <span class="timeline-badge">${escapeHtml(e.service)}</span>
+          ${e.version!=='N/A'?`<span class="timeline-badge">v${escapeHtml(e.version)}</span>`:''}
+          <button class="copy-btn" aria-label="Copy details" data-copy="${escapeHtml(e.title)} – ${escapeHtml(e.description)}">Copy</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  tl.insertAdjacentHTML('beforeend', html);
+  tl.querySelectorAll('.copy-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      copyText(btn.dataset.copy);
+      btn.textContent='Copied';
+      setTimeout(()=>btn.textContent='Copy',1200);
+    });
+  });
+  timelineRendered += slice.length;
+  $('#loadMore').style.display = (timelineRendered>=timelineAll.length) ? 'none' : 'block';
+  if(timelineRendered>=timelineAll.length) noMoreEvents=true;
+}
+$('#loadMore').addEventListener('click', renderNextTimelineSlice);
+$('#activityPeriod').addEventListener('change', ()=> {
+  const per = $('#activityPeriod').value;
+  const services = window.__lastServices || {};
+  buildMasterTimeline(services, per);
+  $('#activityTimeline').innerHTML='';
+  renderNextTimelineSlice();
+});
+
+/* ----- Project resolution ----- 
+   Use: status.html?project=<slug OR projectId>
+*/
+function getProjectParam(){
+  const u = new URL(location.href);
+  return (u.searchParams.get('project') || '').trim();
+}
+async function resolveProjectId(projectParam){
+  if(!projectParam) return null;
+  // If it looks like a push id (projectId), use it directly
+  if(projectParam.length >= 12 && !projectParam.includes('-') && !projectParam.includes(' ')) return projectParam;
+
+  const q = query(ref(db, "projects"), orderByChild("slug"), equalTo(projectParam), limitToFirst(1));
+  const snap = await get(q);
+  const val = snap.val();
+  if(!val) return null;
+  return Object.keys(val)[0];
+}
+
+function mountServiceBars(){
+  $('#statusContainer').querySelectorAll('.bar-box').forEach(b=>{
+    b.addEventListener('mouseenter',e=>{
+      const st=e.target.dataset.status, ds=e.target.dataset.date;
+      const d=new Date(ds);
+      showTooltip(e,`<strong>${d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</strong><br>${STATUS_NAMES[st]||st}`);
+    });
+    b.addEventListener('mousemove',positionTooltip);
+    b.addEventListener('mouseleave',hideTooltip);
+  });
+}
+
+(async function boot(){
+  const param = getProjectParam();
+  const projectId = await resolveProjectId(param);
+  if(!projectId){
+    $('#projectName').textContent = "Project not found";
+    $('#projectSubtitle').innerHTML = `Add <code>?project=YOUR_SLUG</code> to the URL.`;
+    $('#projectRef').textContent = "—";
+    $('#generalStatusLabel').textContent = "No data";
+    return;
+  }
+  $('#projectRef').textContent = projectId;
+
+  // Project meta (public read only if project.public == true via rules)
+  onValue(ref(db, `projects/${projectId}`), snap=>{
+    const p = snap.val();
+    if(!p){ $('#projectName').textContent="Project missing"; return; }
+    $('#projectName').textContent = p.name || "Status";
+    $('#projectSubtitle').textContent = p.public ? "Public status" : "Private (requires auth)";
+  });
+
+  // Announcement
+  onValue(ref(db, `announcements/${projectId}`), snap=>{
+    const ann = snap.val() || {};
+    updateAnnouncement(ann.text || '');
+  });
+
+  // Services (realtime listener; no polling)
+  onValue(ref(db, `services/${projectId}`), snap=>{
+    const services = snap.val() || {};
+    window.__lastServices = services;
+
+    const list = Object.values(services);
+    const container = $('#statusContainer');
+    container.innerHTML = list.length ? list
+      .sort((a,b)=>(a.order??0)-(b.order??0))
+      .map(renderServiceSection).join('')
+      : '<div class="app-section" style="text-align:center;color:var(--subtle);padding:28px">No services yet.</div>';
+
+    updateGeneralStatus(services);
+    mountServiceBars();
+
+    // timeline refresh if data changes
+    const per = $('#activityPeriod').value;
+    const hash = JSON.stringify(services);
+    if(hash !== lastTimelineHash){
+      lastTimelineHash = hash;
+      buildMasterTimeline(services, per);
+      $('#activityTimeline').innerHTML='';
+      renderNextTimelineSlice();
+    }
+  });
+})();
+</script>
+</body>
+</html>
