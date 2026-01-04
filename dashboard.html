@@ -408,7 +408,7 @@ $("#btnOpenPublic").addEventListener("click", async ()=>{
     const snap = await get(ref(db, `projects/${currentProjectId}/slug`));
     const slug = snap.val();
     if(!slug){ toast("Set a slug first"); return; }
-    window.open(`status.html?project=${encodeURIComponent(slug)}`, "_blank");
+    window.open(`status?project=${encodeURIComponent(slug)}`, "_blank");
   }catch(e){
     toast(e.message);
   }
