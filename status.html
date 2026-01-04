@@ -373,9 +373,17 @@ function getProjectParam(){
 }
 async function resolveProjectId(projectParam){
   if(!projectParam) return null;
-  // If it looks like a push id (projectId), use it directly
-  if(projectParam.length >= 12 && !projectParam.includes('-') && !projectParam.includes(' ')) return projectParam;
 
+  // Firebase push IDs almost always start with "-"
+  // If it starts with "-", treat it as a real projectId.
+  if(projectParam.startsWith("-")) return projectParam;
+
+  // Otherwise treat it as a slug and resolve via index
+  const slugSnap = await get(ref(db, `projectSlugs/${projectParam}`));
+  const projectId = slugSnap.val();
+  if(projectId) return projectId;
+
+  // Fallback: legacy slug lookup (if you don’t have projectSlugs populated)
   const q = query(ref(db, "projects"), orderByChild("slug"), equalTo(projectParam), limitToFirst(1));
   const snap = await get(q);
   const val = snap.val();
