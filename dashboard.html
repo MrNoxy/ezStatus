@@ -324,37 +324,42 @@ async function selectProject(projectId){
 }
 
 $("#btnCreateProject").addEventListener("click", async ()=>{
-  // Create project + set membership
   const name = prompt("Project name?");
   if(!name) return;
+
   const slug = slugify(name);
   if(!/^[a-z0-9-]{3,40}$/.test(slug)){ toast("Slug invalid"); return; }
 
-  const projectId = push(ref(db, "projects")).key;
-  const updates = {};
-  updates[`projects/${projectId}`] = {
-    name,
-    slug,
-    ownerUid: currentUid,
-    public: true,
-    createdAt: now()
-  };
-  updates[`projectMembers/${projectId}/${currentUid}`] = { role: "owner" };
-  updates[`userProjects/${currentUid}/${projectId}`] = true;
-
-  // Optional: maintain an index so slug lookups are faster (recommended)
-  updates[`projectSlugs/${slug}`] = projectId;
-
   try{
-    await update(ref(db), updates);
+    // 1) create project
+    const projectId = push(ref(db, "projects")).key;
+    await set(ref(db, `projects/${projectId}`), {
+      name,
+      slug,
+      ownerUid: currentUid,
+      public: true,
+      createdAt: now()
+    });
+
+    // 2) create membership (bootstrap)
+    await set(ref(db, `projectMembers/${projectId}/${currentUid}`), { role: "owner" });
+
+    // 3) add project to user's list
+    await set(ref(db, `userProjects/${currentUid}/${projectId}`), true);
+
+    // 4) slug index
+    await set(ref(db, `projectSlugs/${slug}`), projectId);
+
     toast("Project created");
     await loadProjects();
     $("#projectSelect").value = projectId;
     await selectProject(projectId);
+
   }catch(e){
     toast(e.message);
   }
 });
+
 
 $("#btnSaveProject").addEventListener("click", async ()=>{
   try{
