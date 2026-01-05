@@ -82,11 +82,14 @@
       <span>Signed in as</span>
       <code id="userEmail">—</code>
     </div>
-    <button class="btn-ghost" id="btnLogout">Logout</button>
+    <div class="row" style="gap:8px;justify-content:flex-end">
+      <button class="btn-ghost" id="btnAccount">Account</button>
+      <button class="btn-ghost" id="btnLogout">Logout</button>
+    </div>
   </div>
 
   <!-- ACCOUNT (integrated, no new page) -->
-  <div class="card" style="margin-bottom:12px">
+  <div id="accountCard" class="card" style="margin-bottom:12px;display:none">
     <h2>Account</h2>
 
     <div class="row" style="align-items:center;justify-content:space-between">
@@ -261,7 +264,8 @@ import {
   updatePassword,
   deleteUser,
   EmailAuthProvider,
-  reauthenticateWithCredential
+  reauthenticateWithCredential,
+  verifyBeforeUpdateEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 import {
@@ -349,6 +353,13 @@ $("#btnLogin").addEventListener("click", async ()=>{
   }
 });
 
+
+$("#btnAccount").addEventListener("click", ()=>{
+  const card = $("#accountCard");
+  if(!card) return;
+  const shown = card.style.display !== "none";
+  card.style.display = shown ? "none" : "block";
+});
 $("#btnLogout").addEventListener("click", async ()=>{
   await signOut(auth);
 });
@@ -438,18 +449,19 @@ $("#btnChangeEmail").addEventListener("click", async ()=>{
   const newEmail = ($("#newEmail").value || "").trim();
   if(!newEmail){ toast("Enter new email"); return; }
 
+  // IMPORTANT:
+  // Many Firebase projects now require verifying the NEW email before the change completes.
+  // Using verifyBeforeUpdateEmail sends a confirmation link to the new email and only then updates the account.
   try{
-    await updateEmail(user, newEmail);
-    toast("Email updated. Verify it.");
-    try{ await sendEmailVerification(user); }catch(_){}
+    await verifyBeforeUpdateEmail(user, newEmail);
+    toast("Check your NEW email to confirm the change");
     $("#newEmail").value = "";
   }catch(e){
     if(String(e.code||"").includes("requires-recent-login")){
       try{
         await promptReauth(user);
-        await updateEmail(user, newEmail);
-        toast("Email updated. Verify it.");
-        try{ await sendEmailVerification(user); }catch(_){}
+        await verifyBeforeUpdateEmail(user, newEmail);
+        toast("Check your NEW email to confirm the change");
         $("#newEmail").value = "";
       }catch(e2){
         toast(e2.message || String(e2));
@@ -460,7 +472,7 @@ $("#btnChangeEmail").addEventListener("click", async ()=>{
   }
 });
 
-$("#btnChangePassword").addEventListener("click", async ()=>{
+$("#btnChangePassword")).addEventListener("click", async ()=>{
   const user = auth.currentUser;
   if(!user) return;
   const newPass = ($("#newPassword").value || "");
