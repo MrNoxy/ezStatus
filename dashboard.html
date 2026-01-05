@@ -85,6 +85,87 @@
     <button class="btn-ghost" id="btnLogout">Logout</button>
   </div>
 
+  <!-- ACCOUNT (integrated, no new page) -->
+  <div class="card" style="margin-bottom:12px">
+    <h2>Account</h2>
+
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <div class="pill">
+        <span>UID</span>
+        <code id="userUid">—</code>
+      </div>
+      <div class="pill">
+        <span>Email verified</span>
+        <code id="emailVerified">—</code>
+      </div>
+    </div>
+
+    <div class="split" style="margin-top:12px">
+      <div>
+        <label>Username (optional)</label>
+        <input id="username" type="text" placeholder="noxy" maxlength="24">
+        <div class="row" style="margin-top:10px">
+          <button class="btn-primary" id="btnSaveUsername">Save username</button>
+        </div>
+        <div class="muted" style="margin-top:8px">
+          Stored in Realtime DB at <code>users/&lt;uid&gt;/profile</code>.
+        </div>
+      </div>
+
+      <div>
+        <label>Verify your email</label>
+        <div class="row" style="margin-top:6px">
+          <button id="btnSendVerify" class="btn-primary">Send verification email</button>
+          <button id="btnRefreshUser">Refresh status</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <label>Change email</label>
+        <input id="newEmail" type="email" placeholder="new@email.com">
+        <div class="row" style="margin-top:10px">
+          <button id="btnChangeEmail" class="btn-primary">Change email</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <label>Change password</label>
+        <input id="newPassword" type="password" placeholder="New password (6+ chars)">
+        <div class="row" style="margin-top:10px">
+          <button id="btnChangePassword" class="btn-primary">Change password</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:800">Export all data</div>
+        <div class="muted">Downloads a JSON containing your projects and their data (based on access).</div>
+      </div>
+      <button id="btnExportData">Export JSON</button>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:800;color:#ffd6dc">Account deletion</div>
+        <div class="muted">No servers here: you can request deletion (flag) or delete instantly.</div>
+      </div>
+      <button class="btn-danger" id="btnDeleteAccount">Delete instantly</button>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <button class="btn-ghost" id="btnRequestDeletion">Request deletion (store flag)</button>
+    </div>
+
+    <div class="muted" style="margin-top:8px">
+      Note: A true "delete in 3 days automatically" requires a backend/Cloud Function. This page can only store the request time.
+    </div>
+  </div>
+
   <div class="split">
     <!-- Projects -->
     <div class="card">
@@ -174,7 +255,13 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   onAuthStateChanged,
-  signOut
+  signOut,
+  sendEmailVerification,
+  updateEmail,
+  updatePassword,
+  deleteUser,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 import {
@@ -216,6 +303,27 @@ function requireProject(){
   if(!currentProjectId) throw new Error("Pick a project first.");
 }
 
+/* ---------------- ACCOUNT HELPERS ---------------- */
+async function promptReauth(user){
+  if(!user?.email) throw new Error("Re-auth requires an email/password account.");
+  const pass = prompt("For security, re-enter your current password:");
+  if(!pass) throw new Error("Re-auth cancelled");
+  const cred = EmailAuthProvider.credential(user.email, pass);
+  await reauthenticateWithCredential(user, cred);
+}
+
+function downloadJson(filename, obj){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /* ---------------- AUTH UI ---------------- */
 $("#btnRegister").addEventListener("click", async ()=>{
   const email = $("#email").value.trim();
@@ -249,16 +357,217 @@ onAuthStateChanged(auth, async (user)=>{
   if(!user){
     currentUid = null;
     currentProjectId = null;
+    currentRole = null;
     $("#authCard").style.display = "block";
     $("#app").style.display = "none";
     return;
   }
   currentUid = user.uid;
   $("#userEmail").textContent = user.email || user.uid;
+
+  // Account header fields
+  $("#userUid").textContent = user.uid;
+  $("#emailVerified").textContent = user.emailVerified ? "yes" : "no";
+
+  // Ensure user profile exists (best-effort; requires rules for users/$uid)
+  try{
+    const profSnap = await get(ref(db, `users/${user.uid}/profile`));
+    const prof = profSnap.val() || {};
+    $("#username").value = prof.username || "";
+    if(!prof.createdAt){
+      await update(ref(db, `users/${user.uid}/profile`), { createdAt: now() });
+    }
+  }catch(_){
+    // If you didn't add rules for users/$uid yet, dashboard still works.
+  }
+
   $("#authCard").style.display = "none";
   $("#app").style.display = "block";
 
   await loadProjects();
+});
+
+/* ---------------- ACCOUNT ACTIONS ---------------- */
+$("#btnRefreshUser").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+  try{
+    await user.reload();
+    $("#userEmail").textContent = user.email || user.uid;
+    $("#userUid").textContent = user.uid;
+    $("#emailVerified").textContent = user.emailVerified ? "yes" : "no";
+    toast("Refreshed");
+  }catch(e){
+    toast(e.message);
+  }
+});
+
+$("#btnSendVerify").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+  try{
+    await sendEmailVerification(user);
+    toast("Verification email sent");
+  }catch(e){
+    toast(e.message);
+  }
+});
+
+$("#btnSaveUsername").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+  const username = ($("#username").value || "").trim();
+
+  if(username.length > 24){ toast("Username max 24 chars"); return; }
+  if(username && !/^[a-zA-Z0-9_.-]{3,24}$/.test(username)){
+    toast("Use 3-24 chars: letters, numbers, _ . -");
+    return;
+  }
+
+  try{
+    await update(ref(db, `users/${user.uid}/profile`), { username });
+    toast("Username saved");
+  }catch(e){
+    toast(e.message);
+  }
+});
+
+$("#btnChangeEmail").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+  const newEmail = ($("#newEmail").value || "").trim();
+  if(!newEmail){ toast("Enter new email"); return; }
+
+  try{
+    await updateEmail(user, newEmail);
+    toast("Email updated. Verify it.");
+    try{ await sendEmailVerification(user); }catch(_){}
+    $("#newEmail").value = "";
+  }catch(e){
+    if(String(e.code||"").includes("requires-recent-login")){
+      try{
+        await promptReauth(user);
+        await updateEmail(user, newEmail);
+        toast("Email updated. Verify it.");
+        try{ await sendEmailVerification(user); }catch(_){}
+        $("#newEmail").value = "";
+      }catch(e2){
+        toast(e2.message || String(e2));
+      }
+    }else{
+      toast(e.message);
+    }
+  }
+});
+
+$("#btnChangePassword").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+  const newPass = ($("#newPassword").value || "");
+  if(!newPass || newPass.length < 6){ toast("Password must be 6+ chars"); return; }
+
+  try{
+    await updatePassword(user, newPass);
+    toast("Password updated");
+    $("#newPassword").value = "";
+  }catch(e){
+    if(String(e.code||"").includes("requires-recent-login")){
+      try{
+        await promptReauth(user);
+        await updatePassword(user, newPass);
+        toast("Password updated");
+        $("#newPassword").value = "";
+      }catch(e2){
+        toast(e2.message || String(e2));
+      }
+    }else{
+      toast(e.message);
+    }
+  }
+});
+
+$("#btnRequestDeletion").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+  try{
+    await update(ref(db, `users/${user.uid}/profile`), { deletionRequestedAt: now() });
+    toast("Deletion request stored");
+  }catch(e){
+    toast(e.message);
+  }
+});
+
+$("#btnDeleteAccount").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+
+  const ok = confirm("This will DELETE your Firebase Auth account instantly. Continue?");
+  if(!ok) return;
+
+  try{
+    // Optional: store flag before deletion (best effort)
+    try{ await update(ref(db, `users/${user.uid}/profile`), { deletionRequestedAt: now() }); }catch(_){}
+
+    await deleteUser(user);
+    toast("Account deleted");
+  }catch(e){
+    if(String(e.code||"").includes("requires-recent-login")){
+      try{
+        await promptReauth(user);
+        await deleteUser(user);
+        toast("Account deleted");
+      }catch(e2){
+        toast(e2.message || String(e2));
+      }
+    }else{
+      toast(e.message);
+    }
+  }
+});
+
+$("#btnExportData").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+
+  try{
+    const up = await get(ref(db, `userProjects/${user.uid}`));
+    const map = up.val() || {};
+    const projectIds = Object.keys(map);
+
+    const out = {
+      exportedAt: new Date().toISOString(),
+      uid: user.uid,
+      email: user.email,
+      emailVerified: !!user.emailVerified,
+      profile: {},
+      projects: {}
+    };
+
+    // best-effort profile export
+    try{
+      out.profile = (await get(ref(db, `users/${user.uid}/profile`))).val() || {};
+    }catch(_){}
+
+    for(const pid of projectIds){
+      const p = (await get(ref(db, `projects/${pid}`))).val();
+      if(!p) continue;
+
+      const role = (await get(ref(db, `projectMembers/${pid}/${user.uid}/role`))).val();
+      const data = { meta: p, yourRole: role || null };
+
+      data.services = (await get(ref(db, `services/${pid}`))).val() || {};
+      data.announcements = (await get(ref(db, `announcements/${pid}`))).val() || {};
+      data.incidents = (await get(ref(db, `incidents/${pid}`))).val() || {};
+      data.members = (await get(ref(db, `projectMembers/${pid}`))).val() || {};
+
+      out.projects[pid] = data;
+    }
+
+    downloadJson(`ezstatus-export-${user.uid}.json`, out);
+    toast("Exported");
+  }catch(e){
+    toast(e.message);
+  }
 });
 
 /* ---------------- PROJECTS ---------------- */
@@ -408,7 +717,9 @@ $("#btnOpenPublic").addEventListener("click", async ()=>{
     const snap = await get(ref(db, `projects/${currentProjectId}/slug`));
     const slug = snap.val();
     if(!slug){ toast("Set a slug first"); return; }
-    window.open(`status?project=${encodeURIComponent(slug)}`, "_blank");
+    // You had `status?project=...` before; that would 404 on GitHub Pages.
+    // This keeps behavior but uses the correct file name.
+    window.open(`status.html?project=${encodeURIComponent(slug)}`, "_blank");
   }catch(e){
     toast(e.message);
   }
