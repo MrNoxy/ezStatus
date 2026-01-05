@@ -472,7 +472,7 @@ $("#btnChangeEmail").addEventListener("click", async ()=>{
   }
 });
 
-$("#btnChangePassword")).addEventListener("click", async ()=>{
+$("#btnChangePassword").addEventListener("click", async ()=>{
   const user = auth.currentUser;
   if(!user) return;
   const newPass = ($("#newPassword").value || "");
