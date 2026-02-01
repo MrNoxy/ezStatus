@@ -253,7 +253,19 @@
             font-size: 11px;
             font-family: var(--font-head);
         }
-    </style>
+    
+/* ==== CUSTOM PROJECT DROPDOWN + IMPROVEMENTS ==== */
+.project-dropdown{position:relative}
+.project-selected{background:var(--input-bg);border:1px solid var(--input-border);padding:12px;border-radius:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.project-selected:hover{border-color:var(--accent-blue)}
+.project-options{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:#161414;border:1px solid rgba(255,255,255,.08);border-radius:10px;z-index:100;max-height:260px;overflow-y:auto}
+.project-options.open{display:block}
+.project-option{padding:12px;cursor:pointer;display:flex;gap:10px;align-items:center}
+.project-option:hover{background:rgba(255,255,255,.05)}
+.project-dot{width:10px;height:10px;border-radius:50%}
+.project-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:12px;border-radius:4px;background:rgba(255,255,255,.08)}
+
+</style>
 </head>
 <body>
 
@@ -290,8 +302,13 @@
                 <div class="separator" style="margin: 15px 0;"></div>
 
                 <label style="margin-top:0;">Current Project</label>
-                <select id="projectSelect" style="margin-bottom: 10px;"></select>
+                <div class="project-dropdown">
+                  <div id="projectSelected" class="project-selected">Select project <span>▾</span></div>
+                  <div id="projectOptions" class="project-options"></div>
+                </div>
+                <select id="projectSelect" style="display:none;"></select>
                 <button id="btnCreateProject" class="btn-ghost" style="width:100%; justify-content: flex-start; padding-left:0;">+ New Project</button>
+                <button id="btnDeleteProject" class="btn-danger" style="width:100%; margin-top:8px;">Delete Project</button>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 5px;">
@@ -1100,6 +1117,89 @@
             toast("Imported");
           }catch(e){ toast(e.message); }
         });
-        </script>
+        
+/* ==== PROJECT DROPDOWN LOGIC + IMPROVEMENTS ==== */
+const projectSelected = document.getElementById("projectSelected");
+const projectOptions = document.getElementById("projectOptions");
+
+projectSelected?.addEventListener("click", ()=>{
+  projectOptions.classList.toggle("open");
+});
+
+document.addEventListener("click", e=>{
+  if(!e.target.closest(".project-dropdown")){
+    projectOptions.classList.remove("open");
+  }
+});
+
+async function loadProjects(){
+  const snap = await get(ref(db, `userProjects/${currentUid}`));
+  const map = snap.val() || {};
+  const ids = Object.keys(map);
+
+  projectOptions.innerHTML = "";
+
+  if(ids.length===0){
+    projectSelected.textContent = "No projects";
+    currentProjectId = null;
+    return;
+  }
+
+  for(const id of ids){
+    const pSnap = await get(ref(db, `projects/${id}`));
+    const p = pSnap.val();
+    if(!p) continue;
+
+    const color = p.color || "#e66e6e";
+    const icon = p.icon || "📦";
+
+    const opt = document.createElement("div");
+    opt.className = "project-option";
+    opt.innerHTML = `
+      <div class="project-dot" style="background:${color}"></div>
+      <div class="project-icon">${icon}</div>
+      <div>${escapeHtml(p.name)}<br><small>${id}</small></div>
+    `;
+
+    opt.onclick = async ()=>{
+      projectSelected.innerHTML = `${escapeHtml(p.name)} <span>▾</span>`;
+      projectOptions.classList.remove("open");
+      localStorage.setItem("recentProject", id);
+      await selectProject(id);
+    };
+
+    projectOptions.appendChild(opt);
+  }
+
+  const last = localStorage.getItem("recentProject");
+  const first = ids.includes(last) ? last : ids[0];
+  const fp = await get(ref(db, `projects/${first}`));
+  projectSelected.innerHTML = `${escapeHtml(fp.val().name)} <span>▾</span>`;
+  await selectProject(first);
+}
+
+/* DELETE PROJECT */
+document.getElementById("btnDeleteProject")?.addEventListener("click", async ()=>{
+  try{
+    requireProject();
+    if(currentRole !== "owner"){
+      toast("Only owner can delete project");
+      return;
+    }
+    if(prompt("Type DELETE to confirm")!=="DELETE") return;
+
+    const pid = currentProjectId;
+    await remove(ref(db, `projects/${pid}`));
+    await remove(ref(db, `services/${pid}`));
+    await remove(ref(db, `announcements/${pid}`));
+    await remove(ref(db, `projectMembers/${pid}`));
+    await remove(ref(db, `userProjects/${currentUid}/${pid}`));
+    toast("Project deleted");
+    currentProjectId=null;
+    await loadProjects();
+  }catch(e){toast(e.message)}
+});
+
+</script>
 </body>
 </html>
