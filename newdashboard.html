@@ -773,7 +773,7 @@
         });
         
         /* ---------------- PROJECTS ---------------- */
-        async function loadProjects(){
+        loadProjects = async function(){
           const snap = await get(ref(db, `userProjects/${currentUid}`));
           const map = snap.val() || {};
           const ids = Object.keys(map);
@@ -1132,7 +1132,7 @@ document.addEventListener("click", e=>{
   }
 });
 
-async function loadProjects(){
+loadProjects = async function(){
   const snap = await get(ref(db, `userProjects/${currentUid}`));
   const map = snap.val() || {};
   const ids = Object.keys(map);
