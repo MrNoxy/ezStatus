@@ -37,7 +37,7 @@
             overflow-x: hidden;
         }
 
-        /* --- Ambient Background Effects --- */
+        /* --- Ambient Background Effects (From Framer) --- */
         .ambient-glow {
             position: fixed;
             width: 500px;
@@ -114,81 +114,9 @@
         }
         .menu-btn:hover { background: rgba(255,255,255,0.03); color: white; }
         .menu-btn.active { background: rgba(230, 110, 110, 0.1); color: var(--accent-red); border: 1px solid rgba(230, 110, 110, 0.2); }
+        .menu-btn img { width: 20px; height: 20px; border-radius: 50%; opacity: 0.7; }
 
-        /* --- CUSTOM DROPDOWN STYLING --- */
-        .custom-select-wrapper {
-            position: relative;
-            user-select: none;
-            width: 100%;
-            margin-bottom: 15px;
-        }
-        .custom-select-trigger {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            font-size: 14px;
-            font-weight: 400;
-            color: #fff;
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .custom-select-trigger:hover {
-            background: rgba(187, 187, 187, 0.2);
-        }
-        .custom-select-trigger:after {
-            content: '▼';
-            font-size: 10px;
-            color: var(--text-secondary);
-        }
-        .custom-options {
-            position: absolute;
-            display: block;
-            top: 110%;
-            left: 0;
-            right: 0;
-            border: 1px solid var(--input-border);
-            border-radius: 10px;
-            background: #1a1818;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            z-index: 100;
-            transform: translateY(-10px);
-            transition: all 0.2s;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .custom-select-wrapper.open .custom-options {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: all;
-            transform: translateY(0);
-        }
-        .custom-option {
-            position: relative;
-            display: block;
-            padding: 10px 15px;
-            font-size: 14px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .custom-option:hover {
-            color: #fff;
-            background: rgba(255,255,255,0.05);
-        }
-        .custom-option.selected {
-            color: var(--accent-blue);
-            background: rgba(0, 153, 255, 0.1);
-        }
-
-        /* --- Form Elements --- */
+        /* --- Form Elements (Framer Style) --- */
         label {
             display: block;
             color: var(--text-secondary);
@@ -216,6 +144,7 @@
         }
         
         input::placeholder, textarea::placeholder { color: #555; }
+        select { -webkit-appearance: none; cursor: pointer; }
 
         /* --- Buttons --- */
         .btn-primary, .btn-danger, .btn-ghost {
@@ -361,15 +290,7 @@
                 <div class="separator" style="margin: 15px 0;"></div>
 
                 <label style="margin-top:0;">Current Project</label>
-                
-                <div class="custom-select-wrapper" id="projectSelectWrapper">
-                    <div class="custom-select-trigger">
-                        <span id="projectSelectLabel">Select Project</span>
-                    </div>
-                    <div class="custom-options" id="projectSelectOptions">
-                        </div>
-                </div>
-
+                <select id="projectSelect" style="margin-bottom: 10px;"></select>
                 <button id="btnCreateProject" class="btn-ghost" style="width:100%; justify-content: flex-start; padding-left:0;">+ New Project</button>
             </div>
 
@@ -431,10 +352,7 @@
                     <div style="display:flex; gap:10px;">
                         <button id="btnExportData" class="btn-ghost">Export JSON</button>
                         <button id="btnDeleteAccount" class="btn-danger">Delete Account</button>
-                        <button id="btnRequestDeletion" style="display:none"></button> 
-                        <button id="btnSendVerify" style="display:none"></button> 
-                        <button id="btnRefreshUser" style="display:none"></button> 
-                    </div>
+                        <button id="btnRequestDeletion" style="display:none"></button> <button id="btnSendVerify" style="display:none"></button> <button id="btnRefreshUser" style="display:none"></button> </div>
                 </div>
             </div>
 
@@ -464,9 +382,8 @@
                         </div>
                     </div>
 
-                    <div class="btn-row" style="justify-content: space-between;">
+                    <div class="btn-row">
                         <button id="btnSaveProject" class="btn-primary">Save Settings</button>
-                        <button id="btnDeleteProject" class="btn-danger">Delete Project</button>
                     </div>
                     <p class="sub-text" style="margin-top:15px;">Public URL: https://uptrace.lol/status.html?project=<span id="slugPreview">...</span></p>
                 </div>
@@ -489,8 +406,7 @@
                                 <label>New Service Name</label>
                                 <input id="newServiceName" type="text" placeholder="e.g. API Server, Database, Website">
                             </div>
-                            <div style="display:none"><input id="newServiceOrder" value="0"></div> 
-                            <button id="btnAddService" class="btn-primary" style="height: 42px;">+ Add Service</button>
+                            <div style="display:none"><input id="newServiceOrder" value="0"></div> <button id="btnAddService" class="btn-primary" style="height: 42px;">+ Add Service</button>
                         </div>
                     </div>
 
@@ -508,30 +424,7 @@
     </div>
 
     <script type="module">
-        // ----------------------------------------------------
-        // FIREBASE CONFIGURATION (PASTE YOUR KEYS HERE)
-        // ----------------------------------------------------
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getDatabase } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY_HERE",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        // ----------------------------------------------------
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getDatabase(app);
-
-        // Import other Firebase functions
+        import { auth, db } from "./firebase.js";
         import {
           createUserWithEmailAndPassword,
           signInWithEmailAndPassword,
@@ -582,53 +475,8 @@
         function requireProject(){
           if(!currentProjectId) throw new Error("Pick a project first.");
         }
-
-        // --- CUSTOM DROPDOWN LOGIC ---
-        function setupCustomDropdown() {
-            const wrapper = $('#projectSelectWrapper');
-            const trigger = wrapper.querySelector('.custom-select-trigger');
-            
-            trigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                wrapper.classList.toggle('open');
-            });
-
-            // Close when clicking outside
-            window.addEventListener('click', (e) => {
-                if (!wrapper.contains(e.target)) {
-                    wrapper.classList.remove('open');
-                }
-            });
-        }
-        setupCustomDropdown();
-
-        function renderDropdown(projects) {
-            const optionsContainer = $('#projectSelectOptions');
-            const label = $('#projectSelectLabel');
-            optionsContainer.innerHTML = '';
-
-            if (projects.length === 0) {
-                label.textContent = "No Projects";
-                optionsContainer.innerHTML = '<span class="custom-option">No projects found</span>';
-                return;
-            }
-
-            projects.forEach(p => {
-                const opt = document.createElement('span');
-                opt.className = 'custom-option';
-                if(p.id === currentProjectId) opt.classList.add('selected');
-                // Show Name and (ID)
-                opt.innerHTML = `${escapeHtml(p.name)} <span style="font-size:10px; color:#555; margin-left:5px;">${p.id.substr(0,4)}...</span>`;
-                
-                opt.addEventListener('click', () => {
-                    selectProject(p.id);
-                    $('#projectSelectWrapper').classList.remove('open');
-                });
-                optionsContainer.appendChild(opt);
-            });
-        }
         
-        /* ---------------- AUTH HELPERS ---------------- */
+        /* ---------------- ACCOUNT HELPERS ---------------- */
         async function promptReauth(user){
           if(!user?.email) throw new Error("Re-auth requires an email/password account.");
           const pass = prompt("For security, re-enter your current password:");
@@ -673,10 +521,11 @@
           }
         });
 
+        // Simple Tab Switching Logic for new UI
         const navDashboard = $("#btnNavDashboard");
-        const navAccount = $("#btnAccount");
+        const navAccount = $("#btnAccount"); // Sidebar button
         const accountCard = $("#accountCard");
-        const dashboardView = $("#dashboardView");
+        const dashboardView = $("#dashboardView"); // New wrapper for dashboard elements
 
         function showDashboard() {
             accountCard.style.display = "none";
@@ -710,9 +559,12 @@
           }
           currentUid = user.uid;
           $("#userEmail").textContent = user.email || user.uid;
+        
+          // Account header fields
           $("#userUid").textContent = user.uid;
           $("#emailVerified").textContent = user.emailVerified ? "Verified" : "Unverified";
         
+          // Ensure user profile exists (best-effort; requires rules for users/$uid)
           try{
             const profSnap = await get(ref(db, `users/${user.uid}/profile`));
             const prof = profSnap.val() || {};
@@ -720,72 +572,229 @@
             if(!prof.createdAt){
               await update(ref(db, `users/${user.uid}/profile`), { createdAt: now() });
             }
-          }catch(_){ }
+          }catch(_){
+            // If you didn't add rules for users/$uid yet, dashboard still works.
+          }
         
           $("#authCard").style.display = "none";
-          $("#app").style.display = "flex";
-          showDashboard();
+          $("#app").style.display = "flex"; // Changed to Flex for layout
+          showDashboard(); // Default to dashboard view
 
           await loadProjects();
         });
         
+        /* ---------------- ACCOUNT ACTIONS ---------------- */
+        $("#btnRefreshUser").addEventListener("click", async ()=>{
+          const user = auth.currentUser;
+          if(!user) return;
+          try{
+            await user.reload();
+            $("#userEmail").textContent = user.email || user.uid;
+            $("#userUid").textContent = user.uid;
+            $("#emailVerified").textContent = user.emailVerified ? "Verified" : "Unverified";
+            toast("Refreshed");
+          }catch(e){
+            toast(e.message);
+          }
+        });
+        $("#btnSendVerify").addEventListener("click", async ()=>{
+          const user = auth.currentUser;
+          if(!user) return;
+          try{
+            await sendEmailVerification(user);
+            toast("Verification email sent");
+          }catch(e){
+            toast(e.message);
+          }
+        });
+        $("#btnSaveUsername").addEventListener("click", async ()=>{
+          const user = auth.currentUser;
+          if(!user) return;
+          const username = ($("#username").value || "").trim();
+        
+          if(username.length > 24){ toast("Username max 24 chars"); return; }
+          if(username && !/^[a-zA-Z0-9_.-]{3,24}$/.test(username)){
+            toast("Use 3-24 chars: letters, numbers, _ . -");
+            return;
+          }
+        
+          try{
+            await update(ref(db, `users/${user.uid}/profile`), { username });
+            toast("Username saved");
+          }catch(e){
+            toast(e.message);
+          }
+        });
+        $("#btnChangeEmail").addEventListener("click", async ()=>{
+          const user = auth.currentUser;
+          if(!user) return;
+          const newEmail = ($("#newEmail").value || "").trim();
+          if(!newEmail){ toast("Enter new email"); return; }
+        
+          try{
+            await verifyBeforeUpdateEmail(user, newEmail);
+            toast("Check your NEW email to confirm the change");
+            $("#newEmail").value = "";
+          }catch(e){
+            if(String(e.code||"").includes("requires-recent-login")){
+              try{
+                await promptReauth(user);
+                await verifyBeforeUpdateEmail(user, newEmail);
+                toast("Check your NEW email to confirm the change");
+                $("#newEmail").value = "";
+              }catch(e2){
+                toast(e2.message || String(e2));
+              }
+            }else{
+              toast(e.message);
+            }
+          }
+        });
+        $("#btnChangePassword").addEventListener("click", async ()=>{
+          const user = auth.currentUser;
+          if(!user) return;
+          const newPass = ($("#newPassword").value || "");
+          if(!newPass || newPass.length < 6){ toast("Password must be 6+ chars"); return; }
+        
+          try{
+            await updatePassword(user, newPass);
+            toast("Password updated");
+            $("#newPassword").value = "";
+          }catch(e){
+            if(String(e.code||"").includes("requires-recent-login")){
+              try{
+                await promptReauth(user);
+                await updatePassword(user, newPass);
+                toast("Password updated");
+                $("#newPassword").value = "";
+              }catch(e2){
+                toast(e2.message || String(e2));
+              }
+            }else{
+              toast(e.message);
+            }
+          }
+        });
+        $("#btnRequestDeletion").addEventListener("click", async ()=>{
+          const user = auth.currentUser;
+          if(!user) return;
+          try{
+            await update(ref(db, `users/${user.uid}/profile`), { deletionRequestedAt: now() });
+            toast("Deletion request stored");
+          }catch(e){
+            toast(e.message);
+          }
+        });
+        $("#btnDeleteAccount").addEventListener("click", async ()=>{
+          const user = auth.currentUser;
+          if(!user) return;
+        
+          const ok = confirm("This will DELETE your Firebase Auth account instantly. Continue?");
+          if(!ok) return;
+        
+          try{
+            try{ await update(ref(db, `users/${user.uid}/profile`), { deletionRequestedAt: now() }); }catch(_){}
+        
+            await deleteUser(user);
+            toast("Account deleted");
+          }catch(e){
+            if(String(e.code||"").includes("requires-recent-login")){
+              try{
+                await promptReauth(user);
+                await deleteUser(user);
+                toast("Account deleted");
+              }catch(e2){
+                toast(e2.message || String(e2));
+              }
+            }else{
+              toast(e.message);
+            }
+          }
+        });
+        $("#btnExportData").addEventListener("click", async ()=>{
+          const user = auth.currentUser;
+          if(!user) return;
+        
+          try{
+            const up = await get(ref(db, `userProjects/${user.uid}`));
+            const map = up.val() || {};
+            const projectIds = Object.keys(map);
+        
+            const out = {
+              exportedAt: new Date().toISOString(),
+              uid: user.uid,
+              email: user.email,
+              emailVerified: !!user.emailVerified,
+              profile: {},
+              projects: {}
+            };
+        
+            try{
+              out.profile = (await get(ref(db, `users/${user.uid}/profile`))).val() || {};
+            }catch(_){}
+        
+            for(const pid of projectIds){
+              const p = (await get(ref(db, `projects/${pid}`))).val();
+              if(!p) continue;
+        
+              const role = (await get(ref(db, `projectMembers/${pid}/${user.uid}/role`))).val();
+              const data = { meta: p, yourRole: role || null };
+        
+              data.services = (await get(ref(db, `services/${pid}`))).val() || {};
+              data.announcements = (await get(ref(db, `announcements/${pid}`))).val() || {};
+              data.incidents = (await get(ref(db, `incidents/${pid}`))).val() || {};
+              data.members = (await get(ref(db, `projectMembers/${pid}`))).val() || {};
+        
+              out.projects[pid] = data;
+            }
+        
+            downloadJson(`ezstatus-export-${user.uid}.json`, out);
+            toast("Exported");
+          }catch(e){
+            toast(e.message);
+          }
+        });
+        
         /* ---------------- PROJECTS ---------------- */
-        async function loadProjects() {
-            // Get IDs the user has access to
-            const snap = await get(ref(db, `userProjects/${currentUid}`));
-            const map = snap.val() || {};
-            const ids = Object.keys(map);
-
-            if (ids.length === 0) {
-                renderDropdown([]);
-                currentProjectId = null;
-                $('#projectSelectLabel').textContent = "No Projects";
-                return;
-            }
-
-            // Fetch NAMEs for all IDs to display in dropdown
-            // We use Promise.all to fetch them in parallel
-            const promises = ids.map(async (id) => {
-                const pSnap = await get(ref(db, `projects/${id}/name`));
-                return { id, name: pSnap.val() || "Untitled Project" };
-            });
-
-            const projects = await Promise.all(promises);
-            
-            // Build Custom Dropdown
-            renderDropdown(projects);
-
-            // Auto-select first if none selected
-            if (!currentProjectId || !ids.includes(currentProjectId)) {
-                await selectProject(ids[0]);
-            } else {
-                // Refresh label
-                const current = projects.find(p => p.id === currentProjectId);
-                if(current) $('#projectSelectLabel').textContent = current.name;
-            }
+        async function loadProjects(){
+          const snap = await get(ref(db, `userProjects/${currentUid}`));
+          const map = snap.val() || {};
+          const ids = Object.keys(map);
+        
+          const sel = $("#projectSelect");
+          sel.innerHTML = "";
+          if(ids.length===0){
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "No projects (create one)";
+            sel.appendChild(opt);
+            currentProjectId = null;
+            return;
+          }
+        
+          for(const id of ids){
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = id;
+            sel.appendChild(opt);
+          }
+        
+          sel.value = ids[0];
+          await selectProject(ids[0]);
         }
+        
+        $("#projectSelect").addEventListener("change", async ()=>{
+          const id = $("#projectSelect").value;
+          if(id) await selectProject(id);
+        });
         
         async function selectProject(projectId){
           currentProjectId = projectId;
           currentRole = await getRole(projectId, currentUid);
-          
           if(!currentRole){
             toast("No access to this project.");
             return;
           }
-
-          // Update Dropdown Label visually
-          const nameSnap = await get(ref(db, `projects/${projectId}/name`));
-          const name = nameSnap.val() || "Project";
-          $('#projectSelectLabel').textContent = name;
-          
-          // Re-render dropdown options to update "selected" class
-          // (Lazy reload - strictly we should keep the array in memory, but this works)
-          // For now, we assume loadProjects handles the list, we just update the active state visually if needed
-          document.querySelectorAll('.custom-option').forEach(el => {
-              el.classList.remove('selected');
-              if(el.textContent.includes(name)) el.classList.add('selected'); // loose match for visual
-          });
         
           // Live project meta
           if(projectUnsub) projectUnsub();
@@ -803,7 +812,7 @@
             const v = snap.val() || {};
             $("#announcement").value = v.text || "";
           }, { onlyOnce: false });
-          toast(`Project loaded`);
+          toast(`Project selected`);
         }
         
         $("#btnCreateProject").addEventListener("click", async ()=>{
@@ -832,11 +841,13 @@
         
             toast("Project created");
             await loadProjects();
+            $("#projectSelect").value = projectId;
             await selectProject(projectId);
           }catch(e){
             toast(e.message);
           }
         });
+        
         
         $("#btnSaveProject").addEventListener("click", async ()=>{
           try{
@@ -872,54 +883,11 @@
             updates[`projectSlugs/${slug}`] = currentProjectId;
         
             await update(ref(db), updates);
-            // Reload sidebar to reflect new name
-            await loadProjects(); 
             toast("Saved");
           }catch(e){
             toast(e.message);
           }
         });
-
-        // --- DELETE PROJECT LOGIC ---
-        $("#btnDeleteProject").addEventListener("click", async () => {
-            try {
-                requireProject();
-                if (currentRole !== "owner") { toast("Only Owner can delete project"); return; }
-
-                const name = $("#projectName").value;
-                const confirmName = prompt(`To DELETE this project, type its name: "${name}"`);
-                
-                if (confirmName !== name) { toast("Name mismatch, deletion cancelled"); return; }
-
-                const pid = currentProjectId;
-                
-                // Get slug to clean up index
-                const slugSnap = await get(ref(db, `projects/${pid}/slug`));
-                const slug = slugSnap.val();
-
-                // Multi-path update to delete everything
-                const updates = {};
-                updates[`projects/${pid}`] = null;
-                updates[`projectMembers/${pid}`] = null;
-                updates[`services/${pid}`] = null;
-                updates[`announcements/${pid}`] = null;
-                updates[`incidents/${pid}`] = null;
-                if(slug) updates[`projectSlugs/${slug}`] = null;
-                
-                // Note: We cannot easily delete from ALL users' userProjects without a cloud function or iterating all users (bad).
-                // We CAN delete from current user. Other users will see a "dead" project link until they click it and we handle error, or we accept the garbage data.
-                updates[`userProjects/${currentUid}/${pid}`] = null;
-
-                await update(ref(db), updates);
-                
-                toast("Project Deleted");
-                currentProjectId = null;
-                await loadProjects(); // Will select next available or show empty
-            } catch (e) {
-                toast(e.message);
-            }
-        });
-
         $("#btnOpenPublic").addEventListener("click", async ()=>{
           try{
             requireProject();
@@ -1131,38 +1099,6 @@
             await update(ref(db), updates);
             toast("Imported");
           }catch(e){ toast(e.message); }
-        });
-
-        // Account actions placeholders
-        $("#btnRefreshUser").addEventListener("click", async ()=>{
-            const user = auth.currentUser;
-            if(!user) return;
-            await user.reload();
-            toast("Refreshed");
-        });
-        $("#btnSendVerify").addEventListener("click", async ()=>{
-            const user = auth.currentUser;
-            if(!user) return;
-            await sendEmailVerification(user);
-            toast("Sent");
-        });
-        $("#btnRequestDeletion").addEventListener("click", async ()=>{
-            toast("Request Sent");
-        });
-        $("#btnSaveUsername").addEventListener("click", async ()=>{
-             toast("Saved");
-        });
-        $("#btnChangeEmail").addEventListener("click", async ()=>{
-             toast("Check Email");
-        });
-        $("#btnChangePassword").addEventListener("click", async ()=>{
-             toast("Password Updated");
-        });
-        $("#btnExportData").addEventListener("click", async ()=>{
-             toast("Exporting...");
-        });
-        $("#btnDeleteAccount").addEventListener("click", async ()=>{
-             if(confirm("Delete Account?")) toast("Deleted");
         });
         </script>
 </body>
