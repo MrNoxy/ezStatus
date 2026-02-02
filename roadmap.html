@@ -1,0 +1,1167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Todo Studio</title>
+  <style>
+    :root{
+      --bg: #0b1020;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.09);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.62);
+      --good: #26d07c;
+      --warn: #ffcc66;
+      --bad: #ff5c7a;
+      --accent: #7c5cff;
+      --accent2:#23c9ff;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --radius: 16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 15% 10%, rgba(124,92,255,.25), transparent 60%),
+        radial-gradient(900px 600px at 75% 25%, rgba(35,201,255,.18), transparent 60%),
+        radial-gradient(800px 600px at 55% 85%, rgba(38,208,124,.14), transparent 55%),
+        linear-gradient(180deg, #070b16 0%, var(--bg) 100%);
+      overflow:hidden;
+    }
+    .app{
+      height:100%;
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+    .sidebar, .main{
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      backdrop-filter: blur(10px);
+    }
+    .sidebar{
+      display:flex;
+      flex-direction:column;
+      min-width: 320px;
+    }
+    .header{
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 10px;
+    }
+    .title{
+      display:flex;
+      align-items:baseline;
+      gap:10px;
+    }
+    .title h1{
+      font-size: 18px;
+      margin:0;
+      letter-spacing:.2px;
+    }
+    .pill{
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border:1px solid var(--stroke);
+      color: var(--muted);
+      background: rgba(0,0,0,.15);
+    }
+    .actions{
+      display:flex;
+      gap:8px;
+    }
+    button, input, select, textarea{
+      font: inherit;
+      color: inherit;
+    }
+    .btn{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor:pointer;
+      transition: transform .06s ease, background .15s ease, border-color .15s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+    }
+    .btn:hover{ background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.22); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(124,92,255,.30), rgba(35,201,255,.18));
+      border-color: rgba(124,92,255,.40);
+    }
+    .btn.danger{ border-color: rgba(255,92,122,.35); }
+    .btn.small{ padding: 6px 8px; border-radius: 10px; font-size: 12px;}
+    .form{
+      padding: 14px 18px 18px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    label{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    input[type="text"], textarea, select{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      outline:none;
+    }
+    textarea{ resize: vertical; min-height: 68px; max-height: 160px; }
+    .hint{
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .list{
+      padding: 10px 10px 14px;
+      overflow:auto;
+      flex:1;
+    }
+    .item{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      border-radius: 14px;
+      padding: 10px 10px;
+      margin: 10px 8px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .itemTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .itemTitle{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      min-width:0;
+    }
+    .chk{
+      width: 18px; height: 18px;
+      margin-top: 2px;
+      accent-color: var(--good);
+      cursor:pointer;
+      flex: 0 0 auto;
+    }
+    .txt{
+      min-width:0;
+    }
+    .txt .name{
+      font-weight: 650;
+      font-size: 14px;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+    .txt .meta{
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .tag{
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+    }
+    .tag.pri-high{ border-color: rgba(255,204,102,.35); color: rgba(255,204,102,.9);}
+    .tag.pri-med{ border-color: rgba(35,201,255,.35); color: rgba(35,201,255,.9);}
+    .tag.pri-low{ border-color: rgba(38,208,124,.30); color: rgba(38,208,124,.9);}
+    .desc{
+      font-size: 12.5px;
+      color: rgba(255,255,255,.78);
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+    .item.done{
+      opacity: .75;
+    }
+    .item.done .name{
+      text-decoration: line-through;
+      color: rgba(255,255,255,.65);
+    }
+    .itemBtns{
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+
+    /* Main area */
+    .main{
+      display:flex;
+      flex-direction:column;
+      min-width: 0;
+    }
+    .mainTop{
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--stroke);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    }
+    .tabs{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .tab{
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.16);
+      cursor:pointer;
+      user-select:none;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .tab.active{
+      color: var(--text);
+      border-color: rgba(124,92,255,.5);
+      background: linear-gradient(135deg, rgba(124,92,255,.28), rgba(35,201,255,.12));
+    }
+    .filters{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .chip{
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.16);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .chip input{
+      border:none;
+      outline:none;
+      background: transparent;
+      color: var(--text);
+      width: 180px;
+    }
+
+    .view{
+      flex:1;
+      min-height:0;
+      position:relative;
+      overflow:hidden;
+    }
+
+    /* List view inside main */
+    .mainList{
+      height:100%;
+      overflow:auto;
+      padding: 14px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+      align-items:start;
+    }
+    .card{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .cardTop{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .card h3{
+      margin:0;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+    .card .small{
+      font-size:12px;
+      color: var(--muted);
+      margin-top: 6px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .card .desc{ margin-top: 8px; }
+    .card .rowBtns{
+      margin-top: 10px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .card.done{ opacity:.75; }
+    .card.done h3{ text-decoration: line-through; color: rgba(255,255,255,.65); }
+
+    /* Tree view */
+    .treeWrap{
+      height:100%;
+      overflow:auto;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: rgba(255,255,255,.85);
+      line-height: 1.4;
+    }
+    .treeNode{
+      margin-left: 0;
+      padding-left: 0;
+      list-style:none;
+    }
+    .treeNode > li{
+      margin: 6px 0;
+      padding: 6px 8px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      background: rgba(0,0,0,.14);
+    }
+    .treeNode .nodeLine{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      font-family: var(--sans);
+    }
+    .nodeLeft{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+    }
+    .nodeLeft .name{
+      font-weight: 650;
+      font-size: 13px;
+      word-break: break-word;
+    }
+    .treeNode .children{
+      margin-top: 8px;
+      margin-left: 16px;
+      padding-left: 10px;
+      border-left: 1px dashed rgba(255,255,255,.18);
+      list-style:none;
+    }
+
+    /* Canvas/Flow view */
+    .canvas{
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(circle at 1px 1px, rgba(255,255,255,.08) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+    svg#links{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+    }
+    .nodes{
+      position:absolute;
+      inset:0;
+      overflow:hidden;
+    }
+    .node{
+      position:absolute;
+      width: 220px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.26);
+      border-radius: 16px;
+      padding: 10px 10px 8px;
+      cursor: grab;
+      box-shadow: 0 18px 50px rgba(0,0,0,.35);
+      user-select:none;
+    }
+    .node:active{ cursor:grabbing; }
+    .node .top{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+    }
+    .node .name{
+      font-weight: 700;
+      font-size: 13px;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    .node .meta{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+    .node .bottom{
+      margin-top: 8px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+    }
+    .node .miniBtns{
+      display:flex;
+      gap:6px;
+    }
+    .node.done{
+      opacity:.7;
+      border-color: rgba(38,208,124,.22);
+    }
+    .node.done .name{ text-decoration: line-through; color: rgba(255,255,255,.65); }
+    .kbd{
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 980px){
+      body{ overflow:auto; }
+      .app{ grid-template-columns: 1fr; height:auto; }
+      .view{ height: 70vh; }
+      .sidebar{ min-width:0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="header">
+        <div class="brand">
+          <div class="title">
+            <h1>Todo Studio</h1>
+            <span class="pill">List • Tree • Flow</span>
+          </div>
+          <div class="actions">
+            <button class="btn small" id="btnExport" title="Export JSON">Export</button>
+            <button class="btn small danger" id="btnReset" title="Reset everything">Reset</button>
+          </div>
+        </div>
+        <div class="hint">
+          Create tasks, assign a parent, and switch views. In Flow view you can drag nodes.
+          <span class="kbd">Tip:</span> Parents connect to children automatically.
+        </div>
+      </div>
+
+      <div class="form">
+        <div class="field">
+          <label>Title</label>
+          <input id="title" type="text" placeholder="e.g. Fix account management" maxlength="120"/>
+        </div>
+
+        <div class="field">
+          <label>Description</label>
+          <textarea id="desc" placeholder="Optional details…"></textarea>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Priority</label>
+            <select id="priority">
+              <option value="med" selected>Medium</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="status">
+              <option value="open" selected>Open</option>
+              <option value="doing">In Progress</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Parent task (optional)</label>
+          <select id="parent">
+            <option value="">— No parent —</option>
+          </select>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn primary" id="btnAdd">Add task</button>
+          <button class="btn" id="btnUpdate" disabled>Update</button>
+          <button class="btn danger" id="btnCancel" disabled>Cancel edit</button>
+        </div>
+      </div>
+
+      <div class="list" id="sideList"></div>
+    </aside>
+
+    <main class="main">
+      <div class="mainTop">
+        <div class="tabs">
+          <div class="tab active" data-view="cards">Cards</div>
+          <div class="tab" data-view="tree">Tree</div>
+          <div class="tab" data-view="flow">Flow</div>
+        </div>
+        <div class="filters">
+          <div class="chip">
+            <span style="margin-right:8px;">Search</span>
+            <input id="search" placeholder="title / desc…" />
+          </div>
+          <select id="filterStatus" class="btn" style="padding:8px 10px;">
+            <option value="all" selected>All status</option>
+            <option value="open">Open</option>
+            <option value="doing">In Progress</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+      </div>
+
+      <section class="view">
+        <div id="viewCards" class="mainList">
+          <div class="grid" id="cardsGrid"></div>
+        </div>
+
+        <div id="viewTree" class="treeWrap" style="display:none;">
+          <div id="treeRoot"></div>
+        </div>
+
+        <div id="viewFlow" style="display:none;">
+          <div class="canvas"></div>
+          <svg id="links"></svg>
+          <div class="nodes" id="nodes"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // ---------- Storage ----------
+    const KEY = "todo_studio_v1";
+    /** @type {{id:string,title:string,desc:string,priority:"low"|"med"|"high",status:"open"|"doing"|"done",parentId:string|null,pos?:{x:number,y:number}}[]} */
+    let tasks = load() ?? seed();
+
+    function load(){
+      try{
+        const raw = localStorage.getItem(KEY);
+        if(!raw) return null;
+        const parsed = JSON.parse(raw);
+        if(!Array.isArray(parsed)) return null;
+        return parsed;
+      }catch(e){ return null; }
+    }
+    function save(){
+      localStorage.setItem(KEY, JSON.stringify(tasks));
+    }
+    function seed(){
+      const base = [
+        mk("Database & Core Features", "", "high", "doing", null, {x:80,y:80}),
+        mk("Landing Page", "", "med", "open", null, {x:420,y:90}),
+        mk("Public Data Page", "Fix data loading (no data displayed)", "high", "open", null, {x:740,y:120}),
+        mk("Advanced App Management (Paid)", "Planned premium feature set", "med", "open", null, {x:380,y:360}),
+      ];
+      const byTitle = (t)=> base.find(x=>x.title===t)?.id;
+
+      base.push(mk("Support third-party status checks","", "med","open", byTitle("Database & Core Features"), {x:70,y:220}));
+      base.push(mk("Enable Discord bot integration","", "low","open", byTitle("Database & Core Features"), {x:160,y:300}));
+      base.push(mk("Add custom domain support","", "high","open", byTitle("Database & Core Features"), {x:30,y:340}));
+      base.push(mk("Fix account management issues","", "high","doing", byTitle("Database & Core Features"), {x:210,y:190}));
+      base.push(mk("Add global announcements (Uptime/Status)","", "med","open", byTitle("Database & Core Features"), {x:230,y:380}));
+      base.push(mk("Add social links / integrations","", "low","open", byTitle("Database & Core Features"), {x:210,y:450}));
+
+      base.push(mk("Refresh and modernize design","", "med","open", byTitle("Landing Page"), {x:470,y:210}));
+      base.push(mk("Add Synapse + CLDevs advertisement","", "low","open", byTitle("Landing Page"), {x:560,y:270}));
+
+      base.push(mk("Full app update management","Send changelogs, version updates, and update files", "high","open", byTitle("Advanced App Management (Paid)"), {x:380,y:480}));
+      base.push(mk("Advanced configuration options","Bonus management settings", "low","open", byTitle("Advanced App Management (Paid)"), {x:610,y:520}));
+      base.push(mk("User & team management","Create & manage members for user-owned apps", "med","open", byTitle("Advanced App Management (Paid)"), {x:230,y:540}));
+
+      return base;
+    }
+
+    function mk(title, desc, priority, status, parentId, pos){
+      return {
+        id: crypto.randomUUID(),
+        title, desc,
+        priority, status,
+        parentId: parentId ?? null,
+        pos: pos ?? {x: 120 + Math.random()*500, y: 120 + Math.random()*300}
+      };
+    }
+
+    // ---------- Elements ----------
+    const el = (id)=> document.getElementById(id);
+    const titleEl = el("title");
+    const descEl = el("desc");
+    const priEl = el("priority");
+    const statusEl = el("status");
+    const parentEl = el("parent");
+    const sideListEl = el("sideList");
+
+    const tabs = [...document.querySelectorAll(".tab")];
+    const viewCards = el("viewCards");
+    const viewTree = el("viewTree");
+    const viewFlow = el("viewFlow");
+
+    const cardsGrid = el("cardsGrid");
+    const treeRoot = el("treeRoot");
+    const nodesEl = el("nodes");
+    const linksSvg = el("links");
+
+    const btnAdd = el("btnAdd");
+    const btnUpdate = el("btnUpdate");
+    const btnCancel = el("btnCancel");
+    const btnReset = el("btnReset");
+    const btnExport = el("btnExport");
+
+    const searchEl = el("search");
+    const filterStatusEl = el("filterStatus");
+
+    // ---------- State ----------
+    let editingId = null;
+    let currentView = "cards";
+
+    // ---------- Helpers ----------
+    function priorityTag(p){
+      if(p==="high") return `<span class="tag pri-high">HIGH</span>`;
+      if(p==="low") return `<span class="tag pri-low">LOW</span>`;
+      return `<span class="tag pri-med">MED</span>`;
+    }
+    function statusLabel(s){
+      if(s==="doing") return "In Progress";
+      if(s==="done") return "Done";
+      return "Open";
+    }
+    function matchesFilters(t){
+      const q = (searchEl.value || "").trim().toLowerCase();
+      const fs = filterStatusEl.value;
+      if(fs !== "all" && t.status !== fs) return false;
+      if(!q) return true;
+      return (t.title + " " + (t.desc||"")).toLowerCase().includes(q);
+    }
+    function taskById(id){ return tasks.find(t=>t.id===id) ?? null; }
+    function childrenOf(id){ return tasks.filter(t=>t.parentId===id); }
+    function roots(){ return tasks.filter(t=>!t.parentId); }
+
+    function updateParentOptions(){
+      const keep = parentEl.value;
+      parentEl.innerHTML = `<option value="">— No parent —</option>` +
+        tasks
+          .slice()
+          .sort((a,b)=>a.title.localeCompare(b.title))
+          .map(t=>`<option value="${t.id}">${escapeHtml(t.title)}</option>`)
+          .join("");
+      // Restore selection if possible
+      if(keep && tasks.some(t=>t.id===keep)) parentEl.value = keep;
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, m=>({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    function badgeLine(t){
+      const parent = t.parentId ? (taskById(t.parentId)?.title ?? "Unknown") : "No parent";
+      return `${priorityTag(t.priority)} <span class="tag">${statusLabel(t.status)}</span> <span class="tag">Parent: ${escapeHtml(parent)}</span>`;
+    }
+
+    // ---------- CRUD ----------
+    btnAdd.addEventListener("click", ()=>{
+      const title = titleEl.value.trim();
+      if(!title) return flash(titleEl);
+
+      const t = mk(
+        title,
+        descEl.value.trim(),
+        priEl.value,
+        statusEl.value,
+        parentEl.value || null
+      );
+
+      tasks.unshift(t);
+      save();
+      clearForm();
+      renderAll();
+    });
+
+    btnUpdate.addEventListener("click", ()=>{
+      if(!editingId) return;
+      const t = taskById(editingId);
+      if(!t) return;
+
+      const title = titleEl.value.trim();
+      if(!title) return flash(titleEl);
+
+      // prevent parent loop
+      const newParent = parentEl.value || null;
+      if(newParent === t.id) { alert("A task cannot be its own parent."); return; }
+      if(wouldCreateCycle(t.id, newParent)){
+        alert("That parent would create a loop/cycle. Choose a different parent.");
+        return;
+      }
+
+      t.title = title;
+      t.desc = descEl.value.trim();
+      t.priority = priEl.value;
+      t.status = statusEl.value;
+      t.parentId = newParent;
+
+      save();
+      clearForm();
+      renderAll();
+    });
+
+    btnCancel.addEventListener("click", clearForm);
+
+    function wouldCreateCycle(taskId, parentId){
+      // if parent chain contains taskId => cycle
+      let cur = parentId;
+      while(cur){
+        if(cur === taskId) return true;
+        cur = taskById(cur)?.parentId ?? null;
+      }
+      return false;
+    }
+
+    function clearForm(){
+      editingId = null;
+      titleEl.value = "";
+      descEl.value = "";
+      priEl.value = "med";
+      statusEl.value = "open";
+      parentEl.value = "";
+      btnAdd.disabled = false;
+      btnUpdate.disabled = true;
+      btnCancel.disabled = true;
+    }
+
+    function startEdit(id){
+      const t = taskById(id);
+      if(!t) return;
+      editingId = id;
+      titleEl.value = t.title;
+      descEl.value = t.desc || "";
+      priEl.value = t.priority;
+      statusEl.value = t.status;
+      parentEl.value = t.parentId || "";
+      btnAdd.disabled = true;
+      btnUpdate.disabled = false;
+      btnCancel.disabled = false;
+    }
+
+    function removeTask(id){
+      // remove subtree too
+      const toDelete = new Set();
+      (function walk(x){
+        toDelete.add(x);
+        for(const ch of childrenOf(x)) walk(ch.id);
+      })(id);
+
+      tasks = tasks.filter(t=>!toDelete.has(t.id));
+      if(editingId && toDelete.has(editingId)) clearForm();
+      save();
+      renderAll();
+    }
+
+    function toggleDone(id){
+      const t = taskById(id);
+      if(!t) return;
+      t.status = (t.status === "done") ? "open" : "done";
+      save();
+      renderAll();
+    }
+
+    function flash(node){
+      node.animate([{transform:"translateX(0)"},{transform:"translateX(-4px)"},{transform:"translateX(4px)"},{transform:"translateX(0)"}], {duration:180});
+      node.focus();
+    }
+
+    // ---------- Sidebar List ----------
+    function renderSide(){
+      const filtered = tasks.filter(matchesFilters);
+      sideListEl.innerHTML = filtered
+        .slice()
+        .sort((a,b)=> (a.status===b.status? a.title.localeCompare(b.title) : a.status.localeCompare(b.status)))
+        .map(t=>{
+          const parent = t.parentId ? (taskById(t.parentId)?.title ?? "Unknown") : "No parent";
+          return `
+            <div class="item ${t.status==="done" ? "done":""}">
+              <div class="itemTop">
+                <div class="itemTitle">
+                  <input class="chk" type="checkbox" ${t.status==="done"?"checked":""} data-act="toggle" data-id="${t.id}">
+                  <div class="txt">
+                    <div class="name">${escapeHtml(t.title)}</div>
+                    <div class="meta">
+                      ${priorityTag(t.priority)}
+                      <span class="tag">${statusLabel(t.status)}</span>
+                      <span class="tag">Parent: ${escapeHtml(parent)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              ${t.desc ? `<div class="desc">${escapeHtml(t.desc)}</div>` : ``}
+              <div class="itemBtns">
+                <button class="btn small" data-act="edit" data-id="${t.id}">Edit</button>
+                <button class="btn small danger" data-act="del" data-id="${t.id}">Delete</button>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+      sideListEl.querySelectorAll("[data-act]").forEach(b=>{
+        b.addEventListener("click", (e)=>{
+          const act = e.currentTarget.getAttribute("data-act");
+          const id = e.currentTarget.getAttribute("data-id");
+          if(act==="edit") startEdit(id);
+          if(act==="del") removeTask(id);
+          if(act==="toggle") toggleDone(id);
+        });
+      });
+    }
+
+    // ---------- Cards View ----------
+    function renderCards(){
+      const filtered = tasks.filter(matchesFilters);
+      cardsGrid.innerHTML = filtered.map(t=>`
+        <div class="card ${t.status==="done"?"done":""}">
+          <div class="cardTop">
+            <div style="min-width:0;">
+              <h3>${escapeHtml(t.title)}</h3>
+              <div class="small">
+                ${priorityTag(t.priority)}
+                <span class="tag">${statusLabel(t.status)}</span>
+                ${t.parentId ? `<span class="tag">Parent: ${escapeHtml(taskById(t.parentId)?.title ?? "Unknown")}</span>` : `<span class="tag">Root</span>`}
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; align-items:flex-start;">
+              <button class="btn small" data-act="toggle" data-id="${t.id}" title="Toggle done">${t.status==="done" ? "Reopen":"Done"}</button>
+            </div>
+          </div>
+          ${t.desc ? `<div class="desc">${escapeHtml(t.desc)}</div>` : ``}
+          <div class="rowBtns">
+            <button class="btn small" data-act="edit" data-id="${t.id}">Edit</button>
+            <button class="btn small danger" data-act="del" data-id="${t.id}">Delete</button>
+          </div>
+        </div>
+      `).join("");
+
+      cardsGrid.querySelectorAll("[data-act]").forEach(b=>{
+        b.addEventListener("click",(e)=>{
+          const act = e.currentTarget.getAttribute("data-act");
+          const id = e.currentTarget.getAttribute("data-id");
+          if(act==="edit") startEdit(id);
+          if(act==="del") removeTask(id);
+          if(act==="toggle") toggleDone(id);
+        });
+      });
+    }
+
+    // ---------- Tree View ----------
+    function renderTree(){
+      const filteredSet = new Set(tasks.filter(matchesFilters).map(t=>t.id));
+
+      // Include ancestors of matches to keep structure readable
+      const include = new Set();
+      for(const id of filteredSet){
+        let cur = id;
+        while(cur){
+          include.add(cur);
+          cur = taskById(cur)?.parentId ?? null;
+        }
+      }
+
+      function renderNode(id){
+        const t = taskById(id);
+        if(!t || !include.has(id)) return "";
+        const kids = childrenOf(id).filter(ch=>include.has(ch.id));
+        return `
+          <li>
+            <div class="nodeLine">
+              <div class="nodeLeft">
+                <input class="chk" type="checkbox" ${t.status==="done"?"checked":""} data-act="toggle" data-id="${t.id}">
+                <div style="min-width:0;">
+                  <div class="name">${escapeHtml(t.title)}</div>
+                  <div class="meta" style="font-size:12px;color:rgba(255,255,255,.62);display:flex;gap:8px;flex-wrap:wrap;">
+                    ${priorityTag(t.priority)} <span class="tag">${statusLabel(t.status)}</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn small" data-act="edit" data-id="${t.id}">Edit</button>
+                <button class="btn small danger" data-act="del" data-id="${t.id}">Delete</button>
+              </div>
+            </div>
+            ${t.desc ? `<div class="desc" style="margin-top:8px;">${escapeHtml(t.desc)}</div>` : ``}
+            ${kids.length ? `<ul class="children">${kids.map(ch=>renderNode(ch.id)).join("")}</ul>` : ``}
+          </li>
+        `;
+      }
+
+      const rootsToShow = roots().filter(r=>include.has(r.id));
+      treeRoot.innerHTML = rootsToShow.length
+        ? `<ul class="treeNode">${rootsToShow.map(r=>renderNode(r.id)).join("")}</ul>`
+        : `<div class="hint">No items match the current filters.</div>`;
+
+      treeRoot.querySelectorAll("[data-act]").forEach(b=>{
+        b.addEventListener("click", (e)=>{
+          const act = e.currentTarget.getAttribute("data-act");
+          const id = e.currentTarget.getAttribute("data-id");
+          if(act==="edit") startEdit(id);
+          if(act==="del") removeTask(id);
+          if(act==="toggle") toggleDone(id);
+        });
+      });
+    }
+
+    // ---------- Flow View (nodes + SVG lines) ----------
+    let drag = null;
+
+    function renderFlow(){
+      const filtered = tasks.filter(matchesFilters);
+      // Ensure the SVG matches container size
+      const rect = viewFlow.getBoundingClientRect();
+      linksSvg.setAttribute("width", rect.width);
+      linksSvg.setAttribute("height", rect.height);
+      linksSvg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+
+      // Build nodes
+      nodesEl.innerHTML = filtered.map(t=>{
+        const x = t.pos?.x ?? 140;
+        const y = t.pos?.y ?? 140;
+        return `
+          <div class="node ${t.status==="done"?"done":""}" data-id="${t.id}" style="left:${x}px; top:${y}px;">
+            <div class="top">
+              <div style="min-width:0;">
+                <div class="name">${escapeHtml(t.title)}</div>
+                <div class="meta">
+                  ${priorityTag(t.priority)}
+                  <span class="tag">${statusLabel(t.status)}</span>
+                </div>
+              </div>
+              <input class="chk" type="checkbox" ${t.status==="done"?"checked":""} data-act="toggle" data-id="${t.id}" title="Done">
+            </div>
+            ${t.desc ? `<div class="desc" style="margin-top:8px;">${escapeHtml(t.desc)}</div>` : ``}
+            <div class="bottom">
+              <span class="tag">${t.parentId ? `Child` : `Root`}</span>
+              <div class="miniBtns">
+                <button class="btn small" data-act="edit" data-id="${t.id}">Edit</button>
+                <button class="btn small danger" data-act="del" data-id="${t.id}">Del</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // attach action handlers
+      nodesEl.querySelectorAll("[data-act]").forEach(b=>{
+        b.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          const act = e.currentTarget.getAttribute("data-act");
+          const id = e.currentTarget.getAttribute("data-id");
+          if(act==="edit") startEdit(id);
+          if(act==="del") removeTask(id);
+          if(act==="toggle") toggleDone(id);
+        });
+      });
+
+      // drag handling
+      nodesEl.querySelectorAll(".node").forEach(node=>{
+        node.addEventListener("pointerdown", (e)=>{
+          // ignore clicks on buttons/checkbox
+          if(e.target.closest("button") || e.target.closest("input")) return;
+          const id = node.getAttribute("data-id");
+          const t = taskById(id);
+          if(!t) return;
+          node.setPointerCapture(e.pointerId);
+          const start = { x: e.clientX, y: e.clientY };
+          const pos = { x: t.pos?.x ?? 0, y: t.pos?.y ?? 0 };
+          drag = { id, node, start, pos };
+        });
+        node.addEventListener("pointermove", (e)=>{
+          if(!drag || drag.node !== node) return;
+          const dx = e.clientX - drag.start.x;
+          const dy = e.clientY - drag.start.y;
+          const t = taskById(drag.id);
+          if(!t) return;
+          t.pos = { x: drag.pos.x + dx, y: drag.pos.y + dy };
+          node.style.left = t.pos.x + "px";
+          node.style.top = t.pos.y + "px";
+          drawLinks();
+        });
+        node.addEventListener("pointerup", ()=>{
+          if(!drag) return;
+          save();
+          drag = null;
+        });
+      });
+
+      drawLinks();
+    }
+
+    function drawLinks(){
+      // Only draw for nodes currently rendered in flow view
+      const nodeEls = [...nodesEl.querySelectorAll(".node")];
+      const visible = new Map(nodeEls.map(n=>[n.getAttribute("data-id"), n]));
+      const rect = viewFlow.getBoundingClientRect();
+      linksSvg.innerHTML = "";
+
+      // helper to get center point on a node
+      function centerOf(node){
+        const r = node.getBoundingClientRect();
+        return {
+          x: (r.left - rect.left) + r.width/2,
+          y: (r.top - rect.top) + r.height/2
+        };
+      }
+
+      // draw parent->child for tasks that are visible
+      for(const t of tasks){
+        if(!t.parentId) continue;
+        if(!visible.has(t.id) || !visible.has(t.parentId)) continue;
+
+        const childEl = visible.get(t.id);
+        const parentEl = visible.get(t.parentId);
+
+        const a = centerOf(parentEl);
+        const b = centerOf(childEl);
+
+        // Bezier control points for nice curve
+        const dx = Math.max(40, Math.abs(b.x - a.x) * 0.35);
+        const c1 = { x: a.x + dx, y: a.y };
+        const c2 = { x: b.x - dx, y: b.y };
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", "rgba(255,255,255,.26)");
+        path.setAttribute("stroke-width", "2");
+        path.setAttribute("stroke-linecap", "round");
+
+        const glow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        glow.setAttribute("d", path.getAttribute("d"));
+        glow.setAttribute("fill", "none");
+        glow.setAttribute("stroke", "rgba(124,92,255,.18)");
+        glow.setAttribute("stroke-width", "6");
+        glow.setAttribute("stroke-linecap", "round");
+        glow.setAttribute("filter", "blur(0.6px)");
+
+        linksSvg.appendChild(glow);
+        linksSvg.appendChild(path);
+      }
+    }
+
+    // ---------- View switching ----------
+    tabs.forEach(t=>{
+      t.addEventListener("click", ()=>{
+        tabs.forEach(x=>x.classList.remove("active"));
+        t.classList.add("active");
+        currentView = t.dataset.view;
+
+        viewCards.style.display = currentView==="cards" ? "block" : "none";
+        viewTree.style.display  = currentView==="tree"  ? "block" : "none";
+        viewFlow.style.display  = currentView==="flow"  ? "block" : "none";
+
+        renderMain(); // re-render to ensure correct layout
+      });
+    });
+
+    // Re-render on resize so SVG fits, lines stay aligned
+    window.addEventListener("resize", ()=>{
+      if(currentView==="flow") renderFlow();
+    });
+
+    // ---------- Export / Reset ----------
+    btnReset.addEventListener("click", ()=>{
+      const ok = confirm("Reset all tasks? This cannot be undone.");
+      if(!ok) return;
+      tasks = seed();
+      save();
+      clearForm();
+      renderAll();
+    });
+
+    btnExport.addEventListener("click", ()=>{
+      const data = JSON.stringify(tasks, null, 2);
+      const blob = new Blob([data], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "todo-studio-export.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // ---------- Filters ----------
+    searchEl.addEventListener("input", renderAll);
+    filterStatusEl.addEventListener("change", renderAll);
+
+    // ---------- Render ----------
+    function renderMain(){
+      if(currentView==="cards") renderCards();
+      if(currentView==="tree") renderTree();
+      if(currentView==="flow") renderFlow();
+    }
+    function renderAll(){
+      updateParentOptions();
+      renderSide();
+      renderMain();
+    }
+
+    // Initial render
+    updateParentOptions();
+    save();
+    renderAll();
+  </script>
+</body>
+</html>
