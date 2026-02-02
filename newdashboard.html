@@ -880,35 +880,32 @@ $("#btnDeleteProject").addEventListener("click", async ()=>{
       return;
     }
 
-    const ok = confirm(
-      "This will permanently delete this project and ALL data. Continue?"
-    );
+    const ok = confirm("This will permanently delete this project and ALL data. Continue?");
     if(!ok) return;
 
-    // Capture slug BEFORE deleting project
+    // 🔌 Detach live listeners BEFORE deleting permissions
+    if(projectUnsub){ projectUnsub(); projectUnsub = null; }
+    if(servicesUnsub){ servicesUnsub(); servicesUnsub = null; }
+
+    // Capture slug before deletion
     const slugSnap = await get(ref(db, `projects/${currentProjectId}/slug`));
     const slug = slugSnap.val();
 
-    // 🔑 DELETE ORDER MATTERS
-    // 1. Delete project FIRST (while permissions still exist)
+    // 🔑 Correct delete order
     await remove(ref(db, `projects/${currentProjectId}`));
-
-    // 2. Now clean dependent data
     await remove(ref(db, `services/${currentProjectId}`));
     await remove(ref(db, `announcements/${currentProjectId}`));
     await remove(ref(db, `projectMembers/${currentProjectId}`));
     await remove(ref(db, `userProjects/${currentUid}/${currentProjectId}`));
-    if(slug){
-      await remove(ref(db, `projectSlugs/${slug}`));
-    }
+    if(slug) await remove(ref(db, `projectSlugs/${slug}`));
 
+    currentProjectId = null;
     toast("Project deleted");
     await loadProjects();
   }catch(e){
     toast(e.message || String(e));
   }
 });
-
 async function selectProject(projectId){
   currentProjectId = projectId;
   currentRole = await getRole(projectId, currentUid);
@@ -924,7 +921,7 @@ async function selectProject(projectId){
     if($("#projectSelected")) $("#projectSelected").textContent = p.name || "Unnamed Project";
   }catch(_){}
           // Live project meta
-          if(projectUnsub) projectUnsub();
+          if(projectUnsub){ projectUnsub(); projectUnsub = null; }
           projectUnsub = onValue(ref(db, `projects/${projectId}`), snap=>{
             const p = snap.val() || {};
             $("#projectName").value = p.name || "";
@@ -1045,8 +1042,9 @@ async function selectProject(projectId){
         
         /* ---------------- SERVICES ---------------- */
         function mountServicesListener(){
+          if(servicesUnsub) servicesUnsub();
           const holder = $("#services");
-          onValue(ref(db, `services/${currentProjectId}`), snap=>{
+          servicesUnsub = onValue(ref(db, `services/${currentProjectId}`), snap=>{
             const services = snap.val() || {};
             const entries = Object.entries(services)
               .map(([id,s])=>({id,...s}))
