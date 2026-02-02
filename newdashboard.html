@@ -884,21 +884,20 @@ $("#btnDeleteProject").addEventListener("click", async ()=>{
     const slugSnap = await get(ref(db, `projects/${currentProjectId}/slug`));
     const slug = slugSnap.val();
 
-    const updates = {};
-    updates[`projects/${currentProjectId}`] = null;
-    updates[`services/${currentProjectId}`] = null;
-    updates[`announcements/${currentProjectId}`] = null;
-    updates[`incidents/${currentProjectId}`] = null;
-    updates[`projectMembers/${currentProjectId}`] = null;
-    updates[`userProjects/${currentUid}/${currentProjectId}`] = null;
-    if(slug) updates[`projectSlugs/${slug}`] = null;
-
-    await update(ref(db), updates);
+    // IMPORTANT:
+    // Do NOT use multi-location update at "/" because your root ".write" is false.
+    // Delete each subtree at its own path where rules permit it.
+    await remove(ref(db, `services/${currentProjectId}`));
+    await remove(ref(db, `announcements/${currentProjectId}`));
+    await remove(ref(db, `projectMembers/${currentProjectId}`));
+    await remove(ref(db, `projects/${currentProjectId}`));
+    await remove(ref(db, `userProjects/${currentUid}/${currentProjectId}`));
+    if(slug) await remove(ref(db, `projectSlugs/${slug}`));
 
     toast("Project deleted");
     await loadProjects();
   }catch(e){
-    toast(e.message);
+    toast(e.message || String(e));
   }
 });
 async function selectProject(projectId){
