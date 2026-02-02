@@ -253,6 +253,55 @@
             font-size: 11px;
             font-family: var(--font-head);
         }
+/* --- Custom Project Dropdown --- */
+.project-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+.project-selected {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    padding: 12px;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    transition: 0.2s;
+    cursor: pointer;
+    user-select: none;
+}
+
+.project-selected:hover {
+    border-color: var(--accent-blue);
+    background: rgba(0, 153, 255, 0.05);
+}
+
+.project-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    display: none;
+    z-index: 50;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+}
+
+.project-item {
+    padding: 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: white;
+}
+
+.project-item:hover {
+    background: rgba(255,255,255,0.05);
+}
     </style>
 </head>
 <body>
@@ -290,8 +339,19 @@
                 <div class="separator" style="margin: 15px 0;"></div>
 
                 <label style="margin-top:0;">Current Project</label>
-                <select id="projectSelect" style="margin-bottom: 10px;"></select>
-                <button id="btnCreateProject" class="btn-ghost" style="width:100%; justify-content: flex-start; padding-left:0;">+ New Project</button>
+
+<div class="project-dropdown" id="projectDropdown" style="margin-bottom: 10px;">
+    <div class="project-selected" id="projectSelected">Select project</div>
+    <div class="project-menu" id="projectMenu"></div>
+</div>
+
+<button id="btnCreateProject" class="btn-ghost" style="width:100%; justify-content: flex-start; padding-left:0;">+ New Project</button>
+
+<button id="btnDeleteProject"
+        class="btn-danger"
+        style="width:100%; margin-top:10px; display:none;">
+    Delete Project
+</button>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 5px;">
@@ -757,45 +817,104 @@
         
         /* ---------------- PROJECTS ---------------- */
         async function loadProjects(){
-          const snap = await get(ref(db, `userProjects/${currentUid}`));
-          const map = snap.val() || {};
-          const ids = Object.keys(map);
-        
-          const sel = $("#projectSelect");
-          sel.innerHTML = "";
-          if(ids.length===0){
-            const opt = document.createElement("option");
-            opt.value = "";
-            opt.textContent = "No projects (create one)";
-            sel.appendChild(opt);
-            currentProjectId = null;
-            return;
-          }
-        
-          for(const id of ids){
-            const opt = document.createElement("option");
-            opt.value = id;
-            opt.textContent = id;
-            sel.appendChild(opt);
-          }
-        
-          sel.value = ids[0];
-          await selectProject(ids[0]);
-        }
-        
-        $("#projectSelect").addEventListener("change", async ()=>{
-          const id = $("#projectSelect").value;
-          if(id) await selectProject(id);
-        });
-        
-        async function selectProject(projectId){
-          currentProjectId = projectId;
-          currentRole = await getRole(projectId, currentUid);
-          if(!currentRole){
-            toast("No access to this project.");
-            return;
-          }
-        
+  const snap = await get(ref(db, `userProjects/${currentUid}`));
+  const map = snap.val() || {};
+  const ids = Object.keys(map);
+
+  const menu = $("#projectMenu");
+  const selected = $("#projectSelected");
+
+  menu.innerHTML = "";
+  currentProjectId = null;
+
+  if(ids.length===0){
+    selected.textContent = "No projects (create one)";
+    $("#btnDeleteProject").style.display = "none";
+    return;
+  }
+
+  // Build dropdown items, showing project names
+  for(const id of ids){
+    const pSnap = await get(ref(db, `projects/${id}`));
+    const project = pSnap.val();
+    if(!project) continue;
+
+    const item = document.createElement("div");
+    item.className = "project-item";
+    item.textContent = project.name || "Unnamed Project";
+
+    item.addEventListener("click", async ()=>{
+      selected.textContent = project.name || "Unnamed Project";
+      menu.style.display = "none";
+      await selectProject(id);
+    });
+
+    menu.appendChild(item);
+  }
+
+  // Auto-select first project (by id order in userProjects)
+  const firstId = ids[0];
+  const firstSnap = await get(ref(db, `projects/${firstId}`));
+  const first = firstSnap.val() || {};
+  selected.textContent = first.name || "Unnamed Project";
+  await selectProject(firstId);
+}
+
+// Dropdown open/close
+$("#projectSelected").addEventListener("click", ()=>{
+  const menu = $("#projectMenu");
+  menu.style.display = (menu.style.display === "block") ? "none" : "block";
+});
+document.addEventListener("click", (e)=>{
+  if(!$("#projectDropdown").contains(e.target)){
+    $("#projectMenu").style.display = "none";
+  }
+});
+
+// Delete current project (owner only)
+$("#btnDeleteProject").addEventListener("click", async ()=>{
+  try{
+    requireProject();
+    if(currentRole !== "owner"){ toast("Only the project owner can delete this project"); return; }
+
+    const ok = confirm("This will permanently delete this project and ALL data. Continue?");
+    if(!ok) return;
+
+    // Capture slug before deleting project meta
+    const slugSnap = await get(ref(db, `projects/${currentProjectId}/slug`));
+    const slug = slugSnap.val();
+
+    const updates = {};
+    updates[`projects/${currentProjectId}`] = null;
+    updates[`services/${currentProjectId}`] = null;
+    updates[`announcements/${currentProjectId}`] = null;
+    updates[`incidents/${currentProjectId}`] = null;
+    updates[`projectMembers/${currentProjectId}`] = null;
+    updates[`userProjects/${currentUid}/${currentProjectId}`] = null;
+    if(slug) updates[`projectSlugs/${slug}`] = null;
+
+    await update(ref(db), updates);
+
+    toast("Project deleted");
+    await loadProjects();
+  }catch(e){
+    toast(e.message);
+  }
+});
+async function selectProject(projectId){
+  currentProjectId = projectId;
+  currentRole = await getRole(projectId, currentUid);
+  if(!currentRole){
+    toast("No access to this project.");
+    return;
+  }
+
+  // Keep dropdown label in sync (shows project name)
+  try{
+    const pSnap = await get(ref(db, `projects/${projectId}`));
+    const p = pSnap.val() || {};
+    if($("#projectSelected")) $("#projectSelected").textContent = p.name || "Unnamed Project";
+  }catch(_){}
           // Live project meta
           if(projectUnsub) projectUnsub();
           projectUnsub = onValue(ref(db, `projects/${projectId}`), snap=>{
@@ -812,8 +931,10 @@
             const v = snap.val() || {};
             $("#announcement").value = v.text || "";
           }, { onlyOnce: false });
-          toast(`Project selected`);
-        }
+            // Show delete button only for owners
+  $("#btnDeleteProject").style.display = (currentRole === "owner") ? "block" : "none";
+  toast(`Project selected`);
+}
         
         $("#btnCreateProject").addEventListener("click", async ()=>{
           const name = prompt("Project name?");
@@ -841,9 +962,9 @@
         
             toast("Project created");
             await loadProjects();
-            $("#projectSelect").value = projectId;
+            if($("#projectSelected")) $("#projectSelected").textContent = name;
             await selectProject(projectId);
-          }catch(e){
+}catch(e){
             toast(e.message);
           }
         });
