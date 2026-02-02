@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>UpTrace – Dev Admin Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Kode+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0f10;--card:#141416;--border:#26262a;
+  --text:#fff;--muted:#9a9aa0;--red:#e66e6e;--blue:#4da3ff;
+  --radius:12px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:Inter,system-ui;font-size:14px;
+}
+header{
+  padding:20px 30px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+}
+h1{font-family:"Kode Mono";font-weight:400;margin:0}
+main{padding:30px;display:grid;gap:20px}
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px;
+}
+.search{
+  width:100%;padding:10px;border-radius:8px;
+  background:#1c1c20;border:1px solid var(--border);color:white;
+}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left}
+th{color:var(--muted);font-weight:400}
+tr:hover{background:#1a1a1f}
+button{
+  background:transparent;border:1px solid var(--border);
+  color:white;padding:6px 10px;border-radius:6px;cursor:pointer
+}
+button.danger{border-color:var(--red);color:var(--red)}
+button.primary{border-color:var(--blue);color:var(--blue)}
+small{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>UpTrace – Dev Dashboard</h1>
+  <div id="authState"><small>Auth: checking…</small></div>
+</header>
+
+<main>
+
+<div class="card">
+  <h2>Projects</h2>
+  <input class="search" id="projectSearch" placeholder="Search projects by name / slug / owner UID">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Name</th><th>Slug</th><th>Owner UID</th><th>Public</th><th>Created</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="projectsTable"></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Users</h2>
+  <input class="search" id="userSearch" placeholder="Search users by UID / username">
+  <table>
+    <thead>
+      <tr>
+        <th>UID</th><th>Username</th><th>Created</th><th>Deletion Requested</th>
+      </tr>
+    </thead>
+    <tbody id="usersTable"></tbody>
+  </table>
+</div>
+
+</main>
+
+<script type="module">
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { ref, onValue, get, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+const $ = q=>document.querySelector(q);
+
+onAuthStateChanged(auth, user=>{
+  $("#authState").innerHTML = user
+    ? `<small>Logged in as ${user.uid}</small>`
+    : `<small>Not authenticated</small>`;
+});
+
+const projectsRef = ref(db,"projects");
+const usersRef = ref(db,"users");
+
+onValue(projectsRef, snap=>{
+  const data = snap.val()||{};
+  renderProjects(data);
+});
+
+onValue(usersRef, snap=>{
+  const data = snap.val()||{};
+  renderUsers(data);
+});
+
+function renderProjects(projects){
+  const q = $("#projectSearch").value.toLowerCase();
+  const tbody = $("#projectsTable");
+  tbody.innerHTML="";
+  Object.entries(projects).forEach(([id,p])=>{
+    const match = !q || 
+      id.toLowerCase().includes(q) ||
+      (p.name||"").toLowerCase().includes(q) ||
+      (p.slug||"").toLowerCase().includes(q) ||
+      (p.ownerUid||"").toLowerCase().includes(q);
+    if(!match) return;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><code>${id}</code></td>
+      <td>${p.name||""}</td>
+      <td>${p.slug||""}</td>
+      <td><code>${p.ownerUid||""}</code></td>
+      <td>${p.public?"yes":"no"}</td>
+      <td>${p.createdAt?new Date(p.createdAt).toLocaleString():""}</td>
+      <td>
+        <button class="danger" data-del="${id}">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("button[data-del]").forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.dataset.del;
+      const ok = confirm("Delete project "+id+"? This requires owner/admin rights.");
+      if(!ok) return;
+      try{
+        await remove(ref(db, "projects/"+id));
+        alert("Delete attempted. If rules allow, it will disappear.");
+      }catch(e){
+        alert(e.message);
+      }
+    };
+  });
+}
+
+function renderUsers(users){
+  const q = $("#userSearch").value.toLowerCase();
+  const tbody = $("#usersTable");
+  tbody.innerHTML="";
+  Object.entries(users).forEach(([uid,u])=>{
+    const prof = u.profile||{};
+    const match = !q ||
+      uid.toLowerCase().includes(q) ||
+      (prof.username||"").toLowerCase().includes(q);
+    if(!match) return;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><code>${uid}</code></td>
+      <td>${prof.username||""}</td>
+      <td>${prof.createdAt?new Date(prof.createdAt).toLocaleString():""}</td>
+      <td>${prof.deletionRequestedAt?new Date(prof.deletionRequestedAt).toLocaleString():""}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+$("#projectSearch").oninput = ()=>renderProjectsCache();
+$("#userSearch").oninput = ()=>renderUsersCache();
+
+let lastProjects={}, lastUsers={};
+function renderProjectsCache(){ renderProjects(lastProjects); }
+function renderUsersCache(){ renderUsers(lastUsers); }
+
+onValue(projectsRef, s=>{ lastProjects=s.val()||{}; renderProjectsCache(); });
+onValue(usersRef, s=>{ lastUsers=s.val()||{}; renderUsersCache(); });
+
+</script>
+</body>
+</html>
