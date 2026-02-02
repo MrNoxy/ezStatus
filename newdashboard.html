@@ -875,24 +875,32 @@ document.addEventListener("click", (e)=>{
 $("#btnDeleteProject").addEventListener("click", async ()=>{
   try{
     requireProject();
-    if(currentRole !== "owner"){ toast("Only the project owner can delete this project"); return; }
+    if(currentRole !== "owner"){
+      toast("Only the project owner can delete this project");
+      return;
+    }
 
-    const ok = confirm("This will permanently delete this project and ALL data. Continue?");
+    const ok = confirm(
+      "This will permanently delete this project and ALL data. Continue?"
+    );
     if(!ok) return;
 
-    // Capture slug before deleting project meta
+    // Capture slug BEFORE deleting project
     const slugSnap = await get(ref(db, `projects/${currentProjectId}/slug`));
     const slug = slugSnap.val();
 
-    // IMPORTANT:
-    // Do NOT use multi-location update at "/" because your root ".write" is false.
-    // Delete each subtree at its own path where rules permit it.
+    // 🔑 DELETE ORDER MATTERS
+    // 1. Delete project FIRST (while permissions still exist)
+    await remove(ref(db, `projects/${currentProjectId}`));
+
+    // 2. Now clean dependent data
     await remove(ref(db, `services/${currentProjectId}`));
     await remove(ref(db, `announcements/${currentProjectId}`));
     await remove(ref(db, `projectMembers/${currentProjectId}`));
-    await remove(ref(db, `projects/${currentProjectId}`));
     await remove(ref(db, `userProjects/${currentUid}/${currentProjectId}`));
-    if(slug) await remove(ref(db, `projectSlugs/${slug}`));
+    if(slug){
+      await remove(ref(db, `projectSlugs/${slug}`));
+    }
 
     toast("Project deleted");
     await loadProjects();
@@ -900,6 +908,7 @@ $("#btnDeleteProject").addEventListener("click", async ()=>{
     toast(e.message || String(e));
   }
 });
+
 async function selectProject(projectId){
   currentProjectId = projectId;
   currentRole = await getRole(projectId, currentUid);
