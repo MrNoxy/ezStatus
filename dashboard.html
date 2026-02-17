@@ -32,18 +32,24 @@
   .btn-danger{background:#3a1820;border-color:#5c1f2c;color:#ffd6dc}
   .btn-ghost{background:transparent}
   .pill{display:inline-flex;gap:10px;align-items:center;border:1px solid var(--border);border-radius:999px;padding:8px 12px;font-size:13px;color:var(--sub)}
-  .muted{color:var(--sub)}
+  .muted{color:var(--sub);font-size:13px}
   .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:900px){.split{grid-template-columns:1fr}}
   .service{border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:10px}
   .service-header{display:flex;justify-content:space-between;gap:10px;align-items:center}
   .service-name{font-weight:800}
   .hr{height:1px;background:var(--border);margin:14px 0}
-  .toast{position:fixed;right:18px;bottom:18px;background:#0b0f14;border:1px solid var(--border);border-radius:12px;padding:12px 14px;opacity:0;transform:translateY(8px);transition:.18s}
+  .toast{position:fixed;right:18px;bottom:18px;background:#0b0f14;border:1px solid var(--border);border-radius:12px;padding:12px 14px;opacity:0;transform:translateY(8px);transition:.18s;z-index:9999}
   .toast.show{opacity:1;transform:none}
   .grid3{display:grid;grid-template-columns:1.1fr .9fr 1fr;gap:10px}
   @media(max-width:900px){.grid3{grid-template-columns:1fr}}
   code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  
+  /* NEW: Fix visibility for datetime picker icon in dark mode */
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -53,7 +59,6 @@
 
 <div id="toast" class="toast"></div>
 
-<!-- AUTH -->
 <div id="authCard" class="card">
   <h2>Login / Register</h2>
   <div class="row">
@@ -75,7 +80,6 @@
   </div>
 </div>
 
-<!-- APP -->
 <div id="app" style="display:none">
   <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px">
     <div class="pill">
@@ -88,7 +92,6 @@
     </div>
   </div>
 
-  <!-- ACCOUNT (integrated, no new page) -->
   <div id="accountCard" class="card" style="margin-bottom:12px;display:none">
     <h2>Account</h2>
 
@@ -145,7 +148,7 @@
     <div class="row" style="align-items:center;justify-content:space-between">
       <div>
         <div style="font-weight:800">Export all data</div>
-        <div class="muted">Downloads a JSON containing your projects and their data (based on access).</div>
+        <div class="muted">Downloads a JSON containing your projects and their data.</div>
       </div>
       <button id="btnExportData">Export JSON</button>
     </div>
@@ -163,14 +166,9 @@
     <div class="row" style="margin-top:10px">
       <button class="btn-ghost" id="btnRequestDeletion">Request deletion (store flag)</button>
     </div>
-
-    <div class="muted" style="margin-top:8px">
-      Note: A true "delete in 3 days automatically" requires a backend/Cloud Function. This page can only store the request time.
-    </div>
   </div>
 
   <div class="split">
-    <!-- Projects -->
     <div class="card">
       <h2>Projects</h2>
 
@@ -207,7 +205,6 @@
       </div>
     </div>
 
-    <!-- Announcement -->
     <div class="card">
       <h2>Announcement</h2>
       <label>General announcement text</label>
@@ -243,8 +240,7 @@
   <div class="card" style="margin-top:12px">
     <h2>Legacy import (optional)</h2>
     <div class="muted">
-      If you previously used <code>statusApps</code> at the DB root, you can import it into the selected project once.
-      This does NOT delete the old data.
+      If you previously used <code>statusApps</code> at the DB root, you can import it here.
     </div>
     <div class="row" style="margin-top:10px">
       <button id="btnImportLegacy">Import legacy statusApps → services</button>
@@ -292,6 +288,12 @@ function slugify(s){
 
 function now(){ return Date.now(); }
 
+// Helper for datetime-local inputs (Local Time -> YYYY-MM-DDTHH:mm)
+function toLocalISO(date) {
+    const pad = n => n < 10 ? '0' + n : n;
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+}
+
 let currentUid = null;
 let currentProjectId = null;
 let currentRole = null;
@@ -336,9 +338,7 @@ $("#btnRegister").addEventListener("click", async ()=>{
   try{
     await createUserWithEmailAndPassword(auth, email, pass);
     toast("Registered!");
-  }catch(e){
-    toast(e.message);
-  }
+  }catch(e){ toast(e.message); }
 });
 
 $("#btnLogin").addEventListener("click", async ()=>{
@@ -348,53 +348,37 @@ $("#btnLogin").addEventListener("click", async ()=>{
   try{
     await signInWithEmailAndPassword(auth, email, pass);
     toast("Logged in!");
-  }catch(e){
-    toast(e.message);
-  }
+  }catch(e){ toast(e.message); }
 });
-
 
 $("#btnAccount").addEventListener("click", ()=>{
   const card = $("#accountCard");
-  if(!card) return;
-  const shown = card.style.display !== "none";
-  card.style.display = shown ? "none" : "block";
+  card.style.display = card.style.display !== "none" ? "none" : "block";
 });
-$("#btnLogout").addEventListener("click", async ()=>{
-  await signOut(auth);
-});
+
+$("#btnLogout").addEventListener("click", async ()=>{ await signOut(auth); });
 
 onAuthStateChanged(auth, async (user)=>{
   if(!user){
-    currentUid = null;
-    currentProjectId = null;
-    currentRole = null;
+    currentUid = null; currentProjectId = null; currentRole = null;
     $("#authCard").style.display = "block";
     $("#app").style.display = "none";
     return;
   }
   currentUid = user.uid;
   $("#userEmail").textContent = user.email || user.uid;
-
-  // Account header fields
   $("#userUid").textContent = user.uid;
   $("#emailVerified").textContent = user.emailVerified ? "yes" : "no";
 
-  // Ensure user profile exists (best-effort; requires rules for users/$uid)
   try{
     const profSnap = await get(ref(db, `users/${user.uid}/profile`));
     const prof = profSnap.val() || {};
     $("#username").value = prof.username || "";
-    if(!prof.createdAt){
-      await update(ref(db, `users/${user.uid}/profile`), { createdAt: now() });
-    }
-  }catch(_){
-    // If you didn't add rules for users/$uid yet, dashboard still works.
-  }
+    if(!prof.createdAt) await update(ref(db, `users/${user.uid}/profile`), { createdAt: now() });
+  }catch(_){}
 
   $("#authCard").style.display = "none";
   $("#app").style.display = "block";
-
   await loadProjects();
 });
 
@@ -405,208 +389,104 @@ $("#btnRefreshUser").addEventListener("click", async ()=>{
   try{
     await user.reload();
     $("#userEmail").textContent = user.email || user.uid;
-    $("#userUid").textContent = user.uid;
     $("#emailVerified").textContent = user.emailVerified ? "yes" : "no";
     toast("Refreshed");
-  }catch(e){
-    toast(e.message);
-  }
+  }catch(e){ toast(e.message); }
 });
 
 $("#btnSendVerify").addEventListener("click", async ()=>{
   const user = auth.currentUser;
   if(!user) return;
-  try{
-    await sendEmailVerification(user);
-    toast("Verification email sent");
-  }catch(e){
-    toast(e.message);
-  }
+  try{ await sendEmailVerification(user); toast("Verification email sent"); }catch(e){ toast(e.message); }
 });
 
 $("#btnSaveUsername").addEventListener("click", async ()=>{
   const user = auth.currentUser;
-  if(!user) return;
   const username = ($("#username").value || "").trim();
-
   if(username.length > 24){ toast("Username max 24 chars"); return; }
-  if(username && !/^[a-zA-Z0-9_.-]{3,24}$/.test(username)){
-    toast("Use 3-24 chars: letters, numbers, _ . -");
-    return;
-  }
-
-  try{
-    await update(ref(db, `users/${user.uid}/profile`), { username });
-    toast("Username saved");
-  }catch(e){
-    toast(e.message);
-  }
+  try{ await update(ref(db, `users/${user.uid}/profile`), { username }); toast("Username saved"); }catch(e){ toast(e.message); }
 });
 
 $("#btnChangeEmail").addEventListener("click", async ()=>{
   const user = auth.currentUser;
-  if(!user) return;
   const newEmail = ($("#newEmail").value || "").trim();
   if(!newEmail){ toast("Enter new email"); return; }
-
-  // IMPORTANT:
-  // Many Firebase projects now require verifying the NEW email before the change completes.
-  // Using verifyBeforeUpdateEmail sends a confirmation link to the new email and only then updates the account.
   try{
     await verifyBeforeUpdateEmail(user, newEmail);
-    toast("Check your NEW email to confirm the change");
+    toast("Check NEW email to confirm");
     $("#newEmail").value = "";
   }catch(e){
-    if(String(e.code||"").includes("requires-recent-login")){
-      try{
-        await promptReauth(user);
-        await verifyBeforeUpdateEmail(user, newEmail);
-        toast("Check your NEW email to confirm the change");
-        $("#newEmail").value = "";
-      }catch(e2){
-        toast(e2.message || String(e2));
-      }
-    }else{
-      toast(e.message);
-    }
+    if(String(e.code).includes("requires-recent-login")){
+      try{ await promptReauth(user); await verifyBeforeUpdateEmail(user, newEmail); toast("Check NEW email"); }catch(e2){ toast(e2.message); }
+    }else{ toast(e.message); }
   }
 });
 
 $("#btnChangePassword").addEventListener("click", async ()=>{
   const user = auth.currentUser;
-  if(!user) return;
   const newPass = ($("#newPassword").value || "");
-  if(!newPass || newPass.length < 6){ toast("Password must be 6+ chars"); return; }
-
+  if(newPass.length < 6){ toast("Password 6+ chars"); return; }
   try{
     await updatePassword(user, newPass);
     toast("Password updated");
     $("#newPassword").value = "";
   }catch(e){
-    if(String(e.code||"").includes("requires-recent-login")){
-      try{
-        await promptReauth(user);
-        await updatePassword(user, newPass);
-        toast("Password updated");
-        $("#newPassword").value = "";
-      }catch(e2){
-        toast(e2.message || String(e2));
-      }
-    }else{
-      toast(e.message);
-    }
+    if(String(e.code).includes("requires-recent-login")){
+      try{ await promptReauth(user); await updatePassword(user, newPass); toast("Password updated"); }catch(e2){ toast(e2.message); }
+    }else{ toast(e.message); }
   }
 });
 
 $("#btnRequestDeletion").addEventListener("click", async ()=>{
   const user = auth.currentUser;
-  if(!user) return;
-  try{
-    await update(ref(db, `users/${user.uid}/profile`), { deletionRequestedAt: now() });
-    toast("Deletion request stored");
-  }catch(e){
-    toast(e.message);
-  }
+  try{ await update(ref(db, `users/${user.uid}/profile`), { deletionRequestedAt: now() }); toast("Deletion request stored"); }catch(e){ toast(e.message); }
 });
 
 $("#btnDeleteAccount").addEventListener("click", async ()=>{
   const user = auth.currentUser;
-  if(!user) return;
-
-  const ok = confirm("This will DELETE your Firebase Auth account instantly. Continue?");
-  if(!ok) return;
-
+  if(!confirm("DELETE account instantly?")) return;
   try{
-    // Optional: store flag before deletion (best effort)
-    try{ await update(ref(db, `users/${user.uid}/profile`), { deletionRequestedAt: now() }); }catch(_){}
-
-    await deleteUser(user);
-    toast("Account deleted");
+    await deleteUser(user); toast("Account deleted");
   }catch(e){
-    if(String(e.code||"").includes("requires-recent-login")){
-      try{
-        await promptReauth(user);
-        await deleteUser(user);
-        toast("Account deleted");
-      }catch(e2){
-        toast(e2.message || String(e2));
-      }
-    }else{
-      toast(e.message);
-    }
+    if(String(e.code).includes("requires-recent-login")){
+      try{ await promptReauth(user); await deleteUser(user); toast("Account deleted"); }catch(e2){ toast(e2.message); }
+    }else{ toast(e.message); }
   }
 });
 
 $("#btnExportData").addEventListener("click", async ()=>{
   const user = auth.currentUser;
   if(!user) return;
-
   try{
+    toast("Generating export...");
     const up = await get(ref(db, `userProjects/${user.uid}`));
-    const map = up.val() || {};
-    const projectIds = Object.keys(map);
+    const ids = Object.keys(up.val() || {});
+    const out = { exportedAt: new Date().toISOString(), uid: user.uid, projects: {} };
 
-    const out = {
-      exportedAt: new Date().toISOString(),
-      uid: user.uid,
-      email: user.email,
-      emailVerified: !!user.emailVerified,
-      profile: {},
-      projects: {}
-    };
-
-    // best-effort profile export
-    try{
-      out.profile = (await get(ref(db, `users/${user.uid}/profile`))).val() || {};
-    }catch(_){}
-
-    for(const pid of projectIds){
-      const p = (await get(ref(db, `projects/${pid}`))).val();
-      if(!p) continue;
-
-      const role = (await get(ref(db, `projectMembers/${pid}/${user.uid}/role`))).val();
-      const data = { meta: p, yourRole: role || null };
-
-      data.services = (await get(ref(db, `services/${pid}`))).val() || {};
-      data.announcements = (await get(ref(db, `announcements/${pid}`))).val() || {};
-      data.incidents = (await get(ref(db, `incidents/${pid}`))).val() || {};
-      data.members = (await get(ref(db, `projectMembers/${pid}`))).val() || {};
-
-      out.projects[pid] = data;
+    for(const pid of ids){
+      const meta = (await get(ref(db, `projects/${pid}`))).val();
+      const services = (await get(ref(db, `services/${pid}`))).val() || {};
+      const announcement = (await get(ref(db, `announcements/${pid}`))).val() || {};
+      if(meta) out.projects[pid] = { meta, services, announcement };
     }
-
-    downloadJson(`ezstatus-export-${user.uid}.json`, out);
+    downloadJson(`export-${user.uid}.json`, out);
     toast("Exported");
-  }catch(e){
-    toast(e.message);
-  }
+  }catch(e){ toast(e.message); }
 });
 
 /* ---------------- PROJECTS ---------------- */
 async function loadProjects(){
-  // userProjects/{uid}/{projectId}: true  (fast listing)
   const snap = await get(ref(db, `userProjects/${currentUid}`));
-  const map = snap.val() || {};
-  const ids = Object.keys(map);
-
+  const ids = Object.keys(snap.val() || {});
   const sel = $("#projectSelect");
   sel.innerHTML = "";
   if(ids.length===0){
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "No projects (create one)";
-    sel.appendChild(opt);
-    currentProjectId = null;
-    return;
+    const opt = document.createElement("option"); opt.value = ""; opt.textContent = "No projects"; sel.appendChild(opt);
+    currentProjectId = null; return;
   }
-
   for(const id of ids){
-    const opt = document.createElement("option");
-    opt.value = id;
-    opt.textContent = id;
-    sel.appendChild(opt);
+    const opt = document.createElement("option"); opt.value = id; opt.textContent = id; sel.appendChild(opt);
   }
-
   sel.value = ids[0];
   await selectProject(ids[0]);
 }
@@ -619,12 +499,7 @@ $("#projectSelect").addEventListener("change", async ()=>{
 async function selectProject(projectId){
   currentProjectId = projectId;
   currentRole = await getRole(projectId, currentUid);
-  if(!currentRole){
-    toast("No access to this project.");
-    return;
-  }
-
-  // Live project meta
+  
   if(projectUnsub) projectUnsub();
   projectUnsub = onValue(ref(db, `projects/${projectId}`), snap=>{
     const p = snap.val() || {};
@@ -633,161 +508,89 @@ async function selectProject(projectId){
     $("#projectPublic").checked = !!p.public;
   });
 
-  // Live services list
-  mountServicesListener();
-  // Load announcement
   onValue(ref(db, `announcements/${projectId}`), snap=>{
-    const v = snap.val() || {};
-    $("#announcement").value = v.text || "";
+    $("#announcement").value = (snap.val()||{}).text || "";
   }, { onlyOnce: false });
 
-  toast(`Project selected (${currentRole})`);
+  mountServicesListener();
+  toast(`Loaded: ${projectId}`);
 }
 
 $("#btnCreateProject").addEventListener("click", async ()=>{
   const name = prompt("Project name?");
   if(!name) return;
-
   const slug = slugify(name);
-  if(!/^[a-z0-9-]{3,40}$/.test(slug)){ toast("Slug invalid"); return; }
-
   try{
-    // 1) create project
-    const projectId = push(ref(db, "projects")).key;
-    await set(ref(db, `projects/${projectId}`), {
-      name,
-      slug,
-      ownerUid: currentUid,
-      public: true,
-      createdAt: now()
-    });
-
-    // 2) create membership (bootstrap)
-    await set(ref(db, `projectMembers/${projectId}/${currentUid}`), { role: "owner" });
-
-    // 3) add project to user's list
-    await set(ref(db, `userProjects/${currentUid}/${projectId}`), true);
-
-    // 4) slug index
-    await set(ref(db, `projectSlugs/${slug}`), projectId);
-
+    const pid = push(ref(db, "projects")).key;
+    await set(ref(db, `projects/${pid}`), { name, slug, ownerUid: currentUid, public: true, createdAt: now() });
+    await set(ref(db, `projectMembers/${pid}/${currentUid}`), { role: "owner" });
+    await set(ref(db, `userProjects/${currentUid}/${pid}`), true);
+    await set(ref(db, `projectSlugs/${slug}`), pid);
     toast("Project created");
     await loadProjects();
-    $("#projectSelect").value = projectId;
-    await selectProject(projectId);
-
-  }catch(e){
-    toast(e.message);
-  }
+    $("#projectSelect").value = pid;
+    await selectProject(pid);
+  }catch(e){ toast(e.message); }
 });
 
-
 $("#btnSaveProject").addEventListener("click", async ()=>{
+  requireProject();
+  if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
+  const name = $("#projectName").value.trim();
+  const slug = slugify($("#projectSlug").value);
+  const isPublic = $("#projectPublic").checked;
+
+  if(!name){ toast("Name required"); return; }
   try{
-    requireProject();
-    if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-
-    const name = $("#projectName").value.trim();
-    let slug = slugify($("#projectSlug").value);
-    const isPublic = $("#projectPublic").checked;
-
-    if(!name){ toast("Name required"); return; }
-    if(!/^[a-z0-9-]{3,40}$/.test(slug)){ toast("Slug must be 3-40 chars a-z 0-9 -"); return; }
-
-    // Enforce unique slug via projectSlugs index
-    // If slug already points to another project -> reject
-    const idxSnap = await get(ref(db, `projectSlugs/${slug}`));
-    const existing = idxSnap.val();
-    if(existing && existing !== currentProjectId){
-      toast("Slug already used");
-      return;
-    }
-
-    // Also clean up old slug index if slug changed
     const oldSnap = await get(ref(db, `projects/${currentProjectId}/slug`));
     const oldSlug = oldSnap.val();
     const updates = {};
     updates[`projects/${currentProjectId}/name`] = name;
     updates[`projects/${currentProjectId}/slug`] = slug;
     updates[`projects/${currentProjectId}/public`] = isPublic;
-
-    if(oldSlug && oldSlug !== slug){
-      updates[`projectSlugs/${oldSlug}`] = null;
-    }
+    if(oldSlug && oldSlug !== slug) updates[`projectSlugs/${oldSlug}`] = null;
     updates[`projectSlugs/${slug}`] = currentProjectId;
-
     await update(ref(db), updates);
     toast("Saved");
-  }catch(e){
-    toast(e.message);
-  }
+  }catch(e){ toast(e.message); }
 });
 
 $("#btnOpenPublic").addEventListener("click", async ()=>{
-  try{
-    requireProject();
-    const snap = await get(ref(db, `projects/${currentProjectId}/slug`));
-    const slug = snap.val();
-    if(!slug){ toast("Set a slug first"); return; }
-    // You had `status?project=...` before; that would 404 on GitHub Pages.
-    // This keeps behavior but uses the correct file name.
-    window.open(`status.html?project=${encodeURIComponent(slug)}`, "_blank");
-  }catch(e){
-    toast(e.message);
-  }
+  requireProject();
+  const snap = await get(ref(db, `projects/${currentProjectId}/slug`));
+  const slug = snap.val();
+  if(slug) window.open(`status.html?project=${encodeURIComponent(slug)}`, "_blank");
 });
 
-/* ---------------- ANNOUNCEMENT ---------------- */
 $("#btnSaveAnnouncement").addEventListener("click", async ()=>{
-  try{
-    requireProject();
-    if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-
-    const text = $("#announcement").value;
-    await set(ref(db, `announcements/${currentProjectId}`), { text, updatedAt: now() });
-    toast("Announcement saved");
-  }catch(e){
-    toast(e.message);
-  }
+  requireProject();
+  if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
+  await set(ref(db, `announcements/${currentProjectId}`), { text: $("#announcement").value, updatedAt: now() });
+  toast("Announcement saved");
 });
 
-/* ---------------- SERVICES ---------------- */
+/* ---------------- SERVICES (UPDATED FOR HOURLY LOGIC) ---------------- */
 function mountServicesListener(){
-  const holder = $("#services");
   onValue(ref(db, `services/${currentProjectId}`), snap=>{
     const services = snap.val() || {};
     const entries = Object.entries(services)
       .map(([id,s])=>({id,...s}))
       .sort((a,b)=>(a.order??0)-(b.order??0));
-
+    
+    const holder = $("#services");
     holder.innerHTML = "";
-    if(entries.length===0){
-      holder.innerHTML = `<div class="muted">No services yet. Add one above.</div>`;
-      return;
-    }
-
-    for(const s of entries){
-      holder.appendChild(renderServiceCard(s));
-    }
+    if(entries.length===0){ holder.innerHTML = `<div class="muted">No services yet.</div>`; return; }
+    
+    entries.forEach(s => holder.appendChild(renderServiceCard(s)));
   });
-}
-
-function statusOptions(selected){
-  const opts = [
-    ["operational","Operational (Online)"],
-    ["down","Down (Offline)"],
-    ["degraded","Degraded Performance"],
-    ["paused","Paused"],
-    ["maintenance","Maintenance"],
-    ["unknown","Unknown"],
-    ["unlinked","Unlinked"]
-  ];
-  return opts.map(([v,l])=>`<option value="${v}" ${v===selected?'selected':''}>${l}</option>`).join("");
 }
 
 function renderServiceCard(s){
   const wrap = document.createElement("div");
   wrap.className = "service";
+  // UPDATED: Default to current Local ISO time for the picker
+  const defaultDate = toLocalISO(new Date());
+
   wrap.innerHTML = `
     <div class="service-header">
       <div>
@@ -809,15 +612,21 @@ function renderServiceCard(s){
         <input data-k="order" type="number" value="${Number(s.order||0)}">
       </div>
       <div>
-        <label>Set status for date</label>
-        <input data-k="date" type="date" value="${new Date().toISOString().split("T")[0]}">
+        <label>Set Time (Hour/Min)</label>
+        <input data-k="ts" type="datetime-local" value="${defaultDate}">
       </div>
     </div>
 
     <div class="grid3" style="margin-top:10px">
       <div>
         <label>Status</label>
-        <select data-k="status">${statusOptions("operational")}</select>
+        <select data-k="status">
+          <option value="operational" ${s.status==='operational'?'selected':''}>Operational</option>
+          <option value="down">Down</option>
+          <option value="degraded">Degraded</option>
+          <option value="paused">Paused</option>
+          <option value="maintenance">Maintenance</option>
+        </select>
       </div>
       <div>
         <label>Version</label>
@@ -825,127 +634,89 @@ function renderServiceCard(s){
       </div>
       <div>
         <label>Notes</label>
-        <input data-k="notes" type="text" placeholder="Short notes (optional)">
+        <input data-k="notes" type="text" placeholder="Short notes">
       </div>
     </div>
 
     <div class="row" style="margin-top:10px">
-      <button class="btn-primary" data-act="setDate">Save for this date</button>
-      <button data-act="bulk14">Set same status for last 14 days</button>
+      <button class="btn-primary" data-act="set">Set Status at Time</button>
+      <button data-act="upd">Update Name/Order</button>
     </div>
   `;
 
-  const actRemove = wrap.querySelector('[data-act="remove"]');
-  const actSet    = wrap.querySelector('[data-act="setDate"]');
-  const actBulk   = wrap.querySelector('[data-act="bulk14"]');
-  const nameInput = wrap.querySelector('input[data-k="name"]');
-  const orderInput= wrap.querySelector('input[data-k="order"]');
-
-  actRemove.addEventListener("click", async ()=>{
-    if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-    if(!confirm(`Remove "${s.name}"?`)) return;
-    await remove(ref(db, `services/${currentProjectId}/${s.id}`));
-    toast("Removed");
+  // --- ACTIONS ---
+  wrap.querySelector('[data-act="remove"]').addEventListener("click", async ()=>{
+    if(confirm(`Remove "${s.name}"?`)) await remove(ref(db, `services/${currentProjectId}/${s.id}`));
   });
 
-  nameInput.addEventListener("change", async ()=>{
-    if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-    await update(ref(db, `services/${currentProjectId}/${s.id}`), { name: nameInput.value.trim(), lastUpdated: now() });
-    toast("Saved");
+  wrap.querySelector('[data-act="upd"]').addEventListener("click", async ()=>{
+    const n = wrap.querySelector('input[data-k="name"]').value.trim();
+    const o = Number(wrap.querySelector('input[data-k="order"]').value);
+    await update(ref(db, `services/${currentProjectId}/${s.id}`), { name: n, order: o, lastUpdated: now() });
+    toast("Info updated");
   });
 
-  orderInput.addEventListener("change", async ()=>{
-    if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-    await update(ref(db, `services/${currentProjectId}/${s.id}`), { order: Number(orderInput.value||0), lastUpdated: now() });
-    toast("Saved");
-  });
-
-  actSet.addEventListener("click", async ()=>{
-    if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-    const date = wrap.querySelector('input[data-k="date"]').value;
+  wrap.querySelector('[data-act="set"]').addEventListener("click", async ()=>{
+    const tsStr = wrap.querySelector('input[data-k="ts"]').value; // "YYYY-MM-DDTHH:mm"
+    if(!tsStr){ toast("Invalid Date"); return; }
+    
     const status = wrap.querySelector('select[data-k="status"]').value;
     const version = wrap.querySelector('input[data-k="version"]').value.trim();
     const notes = wrap.querySelector('input[data-k="notes"]').value.trim();
+    
+    // UPDATED: Use the exact ISO string (sanitize dots if ms exist) as the key
+    // This allows the status.html to sort events by time accurately.
+    // Also store integer timestamp for easier sorting logic if needed.
+    const key = tsStr.replace(/[.]/g, '_'); 
+    const timestampObj = new Date(tsStr).getTime();
 
-    const payload = { status, timestamp: now() };
+    const payload = { status, timestamp: timestampObj };
     if(version) payload.version = version;
     if(notes) payload.notes = notes;
 
     const updates = {};
-    updates[`services/${currentProjectId}/${s.id}/history/${date}`] = payload;
+    updates[`services/${currentProjectId}/${s.id}/history/${key}`] = payload;
     updates[`services/${currentProjectId}/${s.id}/lastUpdated`] = now();
+    
     await update(ref(db), updates);
-    toast("Saved date");
-  });
-
-  actBulk.addEventListener("click", async ()=>{
-    if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-    const status = wrap.querySelector('select[data-k="status"]').value;
-    if(!confirm(`Set "${status}" for last 14 days?`)) return;
-
-    const updates = {};
-    for(let i=13;i>=0;i--){
-      const d = new Date();
-      d.setDate(d.getDate()-i);
-      const ds = d.toISOString().split("T")[0];
-      updates[`services/${currentProjectId}/${s.id}/history/${ds}`] = { status, timestamp: now() };
-    }
-    updates[`services/${currentProjectId}/${s.id}/lastUpdated`] = now();
-    await update(ref(db), updates);
-    toast("Bulk saved");
+    toast("Status updated (auto-flows forward)");
   });
 
   return wrap;
 }
 
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
 
 $("#btnAddService").addEventListener("click", async ()=>{
-  try{
-    requireProject();
-    if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-    const name = $("#newServiceName").value.trim();
-    const order = Number($("#newServiceOrder").value||0);
-    if(!name){ toast("Service name required"); return; }
-
-    const serviceId = push(ref(db, `services/${currentProjectId}`)).key;
-    await set(ref(db, `services/${currentProjectId}/${serviceId}`), {
-      name, order, lastUpdated: now(), history: {}
-    });
-    $("#newServiceName").value = "";
-    toast("Service added");
-  }catch(e){ toast(e.message); }
+  requireProject();
+  if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
+  const name = $("#newServiceName").value.trim();
+  const order = Number($("#newServiceOrder").value||0);
+  if(!name){ toast("Service name required"); return; }
+  const sid = push(ref(db, `services/${currentProjectId}`)).key;
+  await set(ref(db, `services/${currentProjectId}/${sid}`), { name, order, lastUpdated: now(), history: {} });
+  $("#newServiceName").value = "";
+  toast("Service added");
 });
 
-/* ---------------- LEGACY IMPORT ---------------- */
 $("#btnImportLegacy").addEventListener("click", async ()=>{
-  try{
-    requireProject();
-    if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-    if(!confirm("Import legacy statusApps from DB root into this project?")) return;
-
-    const legacySnap = await get(ref(db, "statusApps"));
-    const legacy = legacySnap.val() || [];
-    if(!Array.isArray(legacy) || legacy.length===0){ toast("No legacy array found"); return; }
-
-    const updates = {};
-    legacy.forEach((app)=>{
-      const id = push(ref(db, `services/${currentProjectId}`)).key;
-      updates[`services/${currentProjectId}/${id}`] = {
-        name: app.name || "Imported",
-        order: 0,
-        lastUpdated: app.lastUpdated || now(),
-        history: app.history || {}
-      };
-    });
-    await update(ref(db), updates);
-    toast("Imported");
-  }catch(e){ toast(e.message); }
+  requireProject();
+  if(!confirm("Import legacy statusApps?")) return;
+  const snap = await get(ref(db, "statusApps"));
+  const arr = snap.val() || [];
+  if(!Array.isArray(arr) || !arr.length){ toast("No legacy data found"); return; }
+  const updates = {};
+  arr.forEach(app => {
+    const id = push(ref(db, `services/${currentProjectId}`)).key;
+    updates[`services/${currentProjectId}/${id}`] = {
+      name: app.name || "Imported",
+      order: 0, lastUpdated: now(), history: app.history || {}
+    };
+  });
+  await update(ref(db), updates);
+  toast("Imported");
 });
 </script>
-
 </body>
 </html>
