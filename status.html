@@ -158,6 +158,13 @@ a:hover{text-decoration:underline}
 .copy-btn{margin-left:auto;background:0 0;border:none;color:var(--accent);cursor:pointer;font-size:12px}
 .copy-btn:hover{text-decoration:underline}
 
+
+/* --- Hourly uptime bars (BetterStack-like) --- */
+.status-bar.hourly{gap:2px;flex-wrap:nowrap;overflow:hidden}
+.bar-box.hour{width:6px;height:14px;border-radius:3px}
+.day-labels.hourly{justify-content:space-between}
+.day-labels.hourly .day-label{width:auto;flex:0 0 auto;text-align:left}
+
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (max-width:800px){
   body{padding:24px 0}
@@ -205,6 +212,16 @@ a:hover{text-decoration:underline}
 </div>
 
 <div class="status-container" id="statusContainer" role="region" aria-label="Services status">
+  <div class="timeline-header" style="margin-bottom:12px;">
+    <h2 class="timeline-title" style="color:var(--text);">Uptime</h2>
+    <select class="period-selector" id="uptimePeriod" aria-label="Select uptime graph period">
+      <option value="24h">Last 24 hours</option>
+      <option value="48h">Last 48 hours</option>
+      <option value="7d" selected>Last 7 days</option>
+      <option value="14d">Last 14 days</option>
+      <option value="30d">Last 30 days</option>
+    </select>
+  </div>
   <div class="app-section">
     <div class="top-bar"><span class="status-icon"></span><span>Loading…</span></div>
     <div class="status-bar-container">
@@ -268,7 +285,7 @@ document.addEventListener('click', e=>{
 window.addEventListener('online', ()=> $('#offlineBanner').style.display='none');
 window.addEventListener('offline', ()=> $('#offlineBanner').style.display='block');
 
-const MAX_DAYS = 14;
+const DEFAULT_UPTIME_PERIOD = '7d';
 const STATUS_NAMES = { operational:'Operational', down:'Down', degraded:'Degraded', paused:'Paused', maintenance:'Maintenance', unknown:'Unknown', unlinked:'Unlinked' };
 
 const tip = $('#statusTooltip');
@@ -282,29 +299,104 @@ function positionTooltip(e){
   tip.style.left = x+'px'; tip.style.top  = y+'px';
 }
 
-function periodToHours(p){ 
-  return { '24h':24,'7d':168,'30d':720,'90d':2160,'120d':2880 }[p] || 168; 
+function periodToHours(p){
+  return { '24h':24,'48h':48,'7d':168,'14d':336,'30d':720,'90d':2160,'120d':2880 }[p] || 168;
 }
 
-function renderBars(service){
-  const today = new Date().toISOString().split('T')[0];
-  let boxes=[], labels=[];
-  for(let i=MAX_DAYS-1;i>=0;i--){
-    const d=new Date(); d.setDate(d.getDate()-i);
-    const ds=d.toISOString().split('T')[0];
-    let status='unlinked';
-    const v = service.history?.[ds];
-    if(v){ status = (typeof v==='string') ? v : (v.status||'unknown'); }
-    const cls=status==='operational'?'operational':status;
-    boxes.push(`<div class="bar-box ${cls}" data-status="${status}" data-date="${ds}" aria-label="${d.toLocaleDateString()} ${STATUS_NAMES[status]}"></div>`);
-    if(i===MAX_DAYS-1) labels.push(`<div class="day-label label-start">${MAX_DAYS} days ago</div>`);
-    else if(i===0)     labels.push(`<div class="day-label label-end">Today</div>`);
-    else               labels.push('<div class="day-label"></div>');
+function formatUptimeLabel(hrs){
+  if(hrs===24) return '24h ago';
+  if(hrs===48) return '48h ago';
+  if(hrs%24===0) return `${hrs/24}d ago`;
+  return `${hrs}h ago`;
+}
+
+function floorToHour(ts){ return Math.floor(ts/36e5)*36e5; }
+
+function getServiceChanges(service){
+  const out=[];
+  // New hourly history: { [hourTs]: {status, timestamp, notes, version} }
+  if(service.historyHours){
+    Object.entries(service.historyHours).forEach(([k,v])=>{
+      const t = Number(k);
+      if(!Number.isFinite(t)) return;
+      const st = (typeof v==='string') ? v : (v?.status||'unknown');
+      const note = (typeof v==='object') ? (v?.notes||'') : '';
+      const ver  = (typeof v==='object') ? (v?.version||'') : '';
+      out.push({ t, status: st, notes: note, version: ver, source: 'hour' });
+    });
   }
-  return `<div class="status-bar-container"><div class="status-bar">${boxes.join('')}</div><div class="day-labels">${labels.join('')}</div></div>`;
+  // Legacy daily history: { 'YYYY-MM-DD': {status,timestamp,...} }
+  if(service.history){
+    Object.entries(service.history).forEach(([ds,v])=>{
+      const t = new Date(ds).getTime();
+      const st = (typeof v==='string') ? v : (v?.status||'unknown');
+      const note = (typeof v==='object') ? (v?.notes||'') : '';
+      const ver  = (typeof v==='object') ? (v?.version||'') : '';
+      out.push({ t, status: st, notes: note, version: ver, source: 'day' });
+    });
+  }
+  out.sort((a,b)=>a.t-b.t);
+  return out;
+}
+
+function getStatusAt(service, ts){
+  const t = floorToHour(ts);
+  const changes = getServiceChanges(service);
+  let cur = 'unlinked';
+  for(const c of changes){
+    if(c.t<=t) cur = c.status;
+    else break;
+  }
+  return cur || 'unlinked';
+}
+
+
+function renderBars(service){
+  const period = $('#uptimePeriod')?.value || DEFAULT_UPTIME_PERIOD;
+  const hrs = periodToHours(period);
+  const end = floorToHour(Date.now());
+  const start = end - (hrs-1)*36e5;
+
+  const changes = getServiceChanges(service);
+  let boxes = [];
+  // Walk once to compute hourly status (propagates automatically)
+  let idx = 0;
+  let cur = 'unlinked';
+  while(idx < changes.length && changes[idx].t <= start){
+    cur = changes[idx].status;
+    idx++;
+  }
+
+  for(let ts = start; ts <= end; ts += 36e5){
+    while(idx < changes.length && changes[idx].t <= ts){
+      cur = changes[idx].status;
+      idx++;
+    }
+    const status = cur || 'unlinked';
+    const cls = status==='operational'?'operational':status;
+    boxes.push(`<div class="bar-box hour ${cls}" data-status="${status}" data-ts="${ts}" aria-label="${new Date(ts).toLocaleString()} ${STATUS_NAMES[status]||status}"></div>`);
+  }
+
+  const labels = `
+    <div class="day-labels hourly">
+      <div class="day-label label-start">${formatUptimeLabel(hrs)}</div>
+      <div class="day-label label-end">Now</div>
+    </div>
+  `;
+  return `<div class="status-bar-container"><div class="status-bar hourly">${boxes.join('')}</div>${labels}</div>`;
 }
 
 function renderServiceSection(service){
+  const nowStatus = getStatusAt(service, Date.now());
+  const cls = nowStatus==='operational'?'operational':nowStatus;
+  return `<div class="app-section">
+    <div class="top-bar"><span class="status-icon ${cls}" aria-hidden="true"></span><span>${escapeHtml(service.name||'Unnamed Service')}</span></div>
+    ${renderBars(service)}
+  </div>`;
+}
+
+function escapeHtml(s){
+(service){
   const today = new Date().toISOString().split('T')[0];
   let todayStatus='unlinked';
   const v = service.history?.[today];
@@ -324,14 +416,11 @@ function updateGeneralStatus(services){
   const icon=$('#generalStatusIcon'), label=$('#generalStatusLabel'), last=$('#generalLastUpdated');
   const list = Object.values(services||{});
   if(list.length===0){ label.textContent='No services available'; icon.style.backgroundColor='#777'; last.textContent=''; return; }
-  const todayStr=new Date().toISOString().split('T')[0];
   const statusSet=new Set(); let newestUpdate=0;
   list.forEach(s=>{
     if(s.lastUpdated&&s.lastUpdated>newestUpdate) newestUpdate=s.lastUpdated;
-    const todayData=s.history?.[todayStr];
-    let todayStatus='unlinked';
-    if(todayData){ if(typeof todayData==='string') todayStatus=todayData; else if(todayData.status) todayStatus=todayData.status; }
-    if(!['unknown','unlinked',undefined].includes(todayStatus)) statusSet.add(todayStatus);
+    const st = getStatusAt(s, Date.now());
+    if(!['unknown','unlinked',undefined].includes(st)) statusSet.add(st);
   });
   const statuses=[...statusSet];
   if(statuses.includes('down')) icon.style.backgroundColor='var(--down)';
@@ -365,6 +454,32 @@ function buildMasterTimeline(services, period){
   const now = Date.now();
   const ev = [];
   Object.values(services||{}).forEach(s=>{
+    const pushEvent = (t, st, note, ver)=>{
+      const type = st==='down'?'danger':st==='degraded'?'warning':st==='maintenance'?'info':'success';
+      ev.push({
+        type,
+        time: t,
+        title: `${s.name} – ${STATUS_NAMES[st]||st}`,
+        description: note || `Service status changed to ${st}`,
+        service: s.name,
+        version: ver || 'N/A'
+      });
+    };
+
+    // hourly history
+    if(s.historyHours){
+      Object.entries(s.historyHours).forEach(([k,val])=>{
+        const t = Number(k);
+        if(!Number.isFinite(t)) return;
+        if((now - t)/36e5 > hrs) return;
+        const st = (typeof val==='string') ? val : (val.status||'unknown');
+        const note = (typeof val==='object') ? (val.notes||'') : '';
+        const ver  = (typeof val==='object') ? (val.version||'') : '';
+        pushEvent(t, st, note, ver);
+      });
+    }
+
+    // legacy daily history
     if(!s.history) return;
     Object.entries(s.history).forEach(([ds,val])=>{
       let t = new Date(ds).getTime();
@@ -377,16 +492,8 @@ function buildMasterTimeline(services, period){
 
       const st = (typeof val==='string') ? val : (val.status||'unknown');
       const note = (typeof val==='object') ? (val.notes||'') : '';
-      const ver  = (typeof val==='object') ? (val.version||'N/A') : 'N/A';
-      const type = st==='down'?'danger':st==='degraded'?'warning':st==='maintenance'?'info':'success';
-      ev.push({
-        type,
-        time: t,
-        title: `${s.name} – ${STATUS_NAMES[st]||st}`,
-        description: note || `Service status changed to ${st}`,
-        service: s.name,
-        version: ver
-      });
+      const ver  = (typeof val==='object') ? (val.version||'') : '';
+      pushEvent(t, st, note, ver);
     });
   });
   ev.sort((a,b)=>b.time-a.time);
@@ -434,6 +541,23 @@ $('#activityPeriod').addEventListener('change', ()=> {
   buildMasterTimeline(services, per);
   $('#activityTimeline').innerHTML='';
   renderNextTimelineSlice();
+$('#uptimePeriod').addEventListener('change', ()=>{
+  const services = window.__lastServices || {};
+  const list = Object.values(services);
+  const container = $('#statusContainer');
+  // Re-render sections only (preserve uptime header already in container)
+  const header = container.querySelector('.timeline-header');
+  const sectionsHtml = list.length ? list
+    .sort((a,b)=>(a.order??0)-(b.order??0))
+    .map(renderServiceSection).join('')
+    : '<div class="app-section" style="text-align:center;color:var(--subtle);padding:28px">No services yet.</div>';
+  container.innerHTML = '';
+  if(header) container.appendChild(header);
+  container.insertAdjacentHTML('beforeend', sectionsHtml);
+  updateGeneralStatus(services);
+  mountServiceBars();
+});
+
 });
 
 /* ----- Project resolution ----- 
@@ -466,9 +590,10 @@ async function resolveProjectId(projectParam){
 function mountServiceBars(){
   $('#statusContainer').querySelectorAll('.bar-box').forEach(b=>{
     b.addEventListener('mouseenter',e=>{
-      const st=e.target.dataset.status, ds=e.target.dataset.date;
-      const d=new Date(ds);
-      showTooltip(e,`<strong>${d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</strong><br>${STATUS_NAMES[st]||st}`);
+      const st=e.target.dataset.status;
+      const ts = Number(e.target.dataset.ts || 0);
+      const d=new Date(ts||Date.now());
+      showTooltip(e,`<strong>${d.toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</strong><br>${STATUS_NAMES[st]||st}`);
     });
     b.addEventListener('mousemove',positionTooltip);
     b.addEventListener('mouseleave',hideTooltip);
@@ -508,10 +633,15 @@ function mountServiceBars(){
 
     const list = Object.values(services);
     const container = $('#statusContainer');
-    container.innerHTML = list.length ? list
+    const header = container.querySelector('.timeline-header');
+    const sectionsHtml = list.length ? list
       .sort((a,b)=>(a.order??0)-(b.order??0))
       .map(renderServiceSection).join('')
       : '<div class="app-section" style="text-align:center;color:var(--subtle);padding:28px">No services yet.</div>';
+
+    container.innerHTML = '';
+    if(header) container.appendChild(header);
+    container.insertAdjacentHTML('beforeend', sectionsHtml);
 
     updateGeneralStatus(services);
     mountServiceBars();
