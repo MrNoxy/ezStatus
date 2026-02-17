@@ -354,64 +354,85 @@ function getServiceChanges(service){
 }
 
 function getStatusAt(service, ts){
-  const t = floorToHour(ts);
   const changes = getServiceChanges(service);
   let cur = 'unlinked';
   for(const c of changes){
-    if(c.t<=t) cur = c.status;
+    if(c.t <= ts) cur = c.status;
     else break;
   }
   return cur || 'unlinked';
 }
 
+function startOfDay(ts){
+  const d = new Date(ts);
+  d.setHours(0,0,0,0);
+  return d.getTime();
+}
+
 function renderBars(service){
   const period = $('#uptimePeriod')?.value || DEFAULT_UPTIME_PERIOD;
   const totalHours = periodToHours(period);
-  const end = floorToHour(Date.now());
-  const start = end - (totalHours-1)*36e5;
+  const now = Date.now();
+  const currentHour = floorToHour(now);
 
   const changes = getServiceChanges(service);
   let idx = 0;
   let cur = 'unlinked';
-
-  // Initialize current status at the start timestamp
-  while(idx < changes.length && changes[idx].t <= start){
-    cur = changes[idx].status;
-    idx++;
-  }
-
   const boxes = [];
 
-  // ===== 120 HOURS → HOURLY (120 rectangles) =====
+  // ===============================
+  // 120 HOURS → CALENDAR ALIGNED
+  // ===============================
   if(period === '120h'){
+
+    // 5 calendar days including today
+    const todayStart = startOfDay(now);
+    const start = todayStart - (4 * 24 * 36e5); // 4 days ago 00:00
+    const end = currentHour;
+
+    while(idx < changes.length && changes[idx].t <= start){
+      cur = changes[idx].status;
+      idx++;
+    }
+
     for(let ts = start; ts <= end; ts += 36e5){
       while(idx < changes.length && changes[idx].t <= ts){
         cur = changes[idx].status;
         idx++;
       }
+
       const status = cur || 'unlinked';
-      const cls = status==='operational'?'operational':status;
-      boxes.push(`<div class="bar-box ${cls}" data-status="${status}" data-ts="${ts}" aria-label="${new Date(ts).toLocaleString()} ${STATUS_NAMES[status]||status}"></div>`);
+      boxes.push(
+        `<div class="bar-box ${status}" 
+          data-status="${status}" 
+          data-ts="${ts}">
+        </div>`
+      );
     }
 
-    const labels = `
-      <div class="day-labels hourly">
-        <div class="day-label label-start">${formatUptimeLabel(totalHours)}</div>
-        <div class="day-label label-end">Now</div>
+    return `
+      <div class="status-bar-container">
+        <div class="status-bar hourly">${boxes.join('')}</div>
       </div>
     `;
-
-    return `<div class="status-bar-container"><div class="status-bar hourly">${boxes.join('')}</div>${labels}</div>`;
   }
 
-  // ===== 14d+ → DAILY AGGREGATION (1 rectangle/day) =====
-  const days = Math.round(totalHours / 24);
+  // ==================================
+  // 14d+ → CALENDAR DAYS INCLUDING TODAY
+  // ==================================
+  const days = totalHours / 24;
+  const todayStart = startOfDay(now);
+  const start = todayStart - ((days-1) * 24 * 36e5);
 
-  for(let d=0; d<days; d++){
+  while(idx < changes.length && changes[idx].t <= start){
+    cur = changes[idx].status;
+    idx++;
+  }
+
+  for(let d = 0; d < days; d++){
     const dayStart = start + d*24*36e5;
     const dayEnd = dayStart + 24*36e5;
 
-    // Worst-of-day: down > degraded > maintenance > paused > operational/unknown/unlinked
     let worst = 'operational';
 
     for(let ts = dayStart; ts < dayEnd; ts += 36e5){
@@ -419,26 +440,28 @@ function renderBars(service){
         cur = changes[idx].status;
         idx++;
       }
+
       const st = cur || 'unlinked';
+
       if(st === 'down'){ worst = 'down'; break; }
       if(st === 'degraded' && worst !== 'down'){ worst = 'degraded'; }
       if(st === 'maintenance' && !['down','degraded'].includes(worst)){ worst = 'maintenance'; }
       if(st === 'paused' && !['down','degraded','maintenance'].includes(worst)){ worst = 'paused'; }
-      if((st === 'unknown' || st === 'unlinked') && worst === 'operational'){ worst = st; }
     }
 
-    const cls = worst==='operational'?'operational':worst;
-    boxes.push(`<div class="bar-box ${cls}" data-status="${worst}" data-ts="${dayStart}" aria-label="${new Date(dayStart).toLocaleDateString()} ${STATUS_NAMES[worst]||worst}"></div>`);
+    boxes.push(
+      `<div class="bar-box ${worst}" 
+        data-status="${worst}" 
+        data-ts="${dayStart}">
+      </div>`
+    );
   }
 
-  const labels = `
-    <div class="day-labels hourly">
-      <div class="day-label label-start">${formatUptimeLabel(totalHours)}</div>
-      <div class="day-label label-end">Now</div>
+  return `
+    <div class="status-bar-container">
+      <div class="status-bar daily">${boxes.join('')}</div>
     </div>
   `;
-
-  return `<div class="status-bar-container"><div class="status-bar daily">${boxes.join('')}</div>${labels}</div>`;
 }
 
 function renderServiceSection(service){
