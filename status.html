@@ -128,7 +128,6 @@ a:hover{text-decoration:underline}
 .bar-box:hover{transform:scale(1.05)}
 #statusTooltip{position:fixed;background:var(--tooltip);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:1000;max-width:280px;line-height:1.4}
 
-  
 /* --------------  RECENT ACTIVITY  ––  infinite scroll  -------------- */
 .timeline-container{width:780px;max-width:95%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-top:var(--gap);animation:fadeIn .5s ease}
 .timeline-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gap)}
@@ -157,7 +156,6 @@ a:hover{text-decoration:underline}
 .timeline-badge.info{background:rgba(88,166,255,.1);border-color:var(--accent);color:var(--accent)}
 .copy-btn{margin-left:auto;background:0 0;border:none;color:var(--accent);cursor:pointer;font-size:12px}
 .copy-btn:hover{text-decoration:underline}
-
 
 /* --- Hourly uptime bars (BetterStack-like) --- */
 .status-bar.hourly{gap:2px;flex-wrap:nowrap;overflow:hidden}
@@ -350,7 +348,6 @@ function getStatusAt(service, ts){
   return cur || 'unlinked';
 }
 
-
 function renderBars(service){
   const period = $('#uptimePeriod')?.value || DEFAULT_UPTIME_PERIOD;
   const hrs = periodToHours(period);
@@ -389,19 +386,6 @@ function renderBars(service){
 function renderServiceSection(service){
   const nowStatus = getStatusAt(service, Date.now());
   const cls = nowStatus==='operational'?'operational':nowStatus;
-  return `<div class="app-section">
-    <div class="top-bar"><span class="status-icon ${cls}" aria-hidden="true"></span><span>${escapeHtml(service.name||'Unnamed Service')}</span></div>
-    ${renderBars(service)}
-  </div>`;
-}
-
-function escapeHtml(s){
-(service){
-  const today = new Date().toISOString().split('T')[0];
-  let todayStatus='unlinked';
-  const v = service.history?.[today];
-  if(v){ todayStatus = (typeof v==='string') ? v : (v.status||'unknown'); }
-  const cls=todayStatus==='operational'?'operational':todayStatus;
   return `<div class="app-section">
     <div class="top-bar"><span class="status-icon ${cls}" aria-hidden="true"></span><span>${escapeHtml(service.name||'Unnamed Service')}</span></div>
     ${renderBars(service)}
@@ -541,6 +525,8 @@ $('#activityPeriod').addEventListener('change', ()=> {
   buildMasterTimeline(services, per);
   $('#activityTimeline').innerHTML='';
   renderNextTimelineSlice();
+});
+
 $('#uptimePeriod').addEventListener('change', ()=>{
   const services = window.__lastServices || {};
   const list = Object.values(services);
@@ -556,8 +542,6 @@ $('#uptimePeriod').addEventListener('change', ()=>{
   container.insertAdjacentHTML('beforeend', sectionsHtml);
   updateGeneralStatus(services);
   mountServiceBars();
-});
-
 });
 
 /* ----- Project resolution ----- 
