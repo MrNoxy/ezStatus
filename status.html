@@ -15,7 +15,7 @@
   --border:#30363d;--text:#c9d1d9;--subtle:#8b949e;--accent:#58a6ff;
   --ok:#00c17c;--down:#d2344e;--warning:#f0a500;--paused:#f0de4e;
   --maintenance:#6a42f5;--unknown:#777;--unlinked:#555a66;
-  --radius:12px;--gap:24px;--hourBox:6px;--barH:14px;
+  --radius:12px;--gap:24px;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
 /* ----  BUILT-IN THEMES  ---- */
@@ -114,13 +114,11 @@ a:hover{text-decoration:underline}
 .status-icon.unlinked{background:var(--unlinked)}
 
 .status-bar-container{width:780px;max-width:95%;display:flex;flex-direction:column;gap:4px}
-.status-bar{display:flex;gap:2px;overflow-x:auto;overflow-y:hidden;padding-bottom:4px;scrollbar-width:thin}
-.status-bar::-webkit-scrollbar{height:6px}
-.status-bar::-webkit-scrollbar-thumb{background:var(--border);border-radius:999px}
+.status-bar{display:flex;gap:3px}
 .day-labels{display:flex;gap:3px;font-size:12px;color:var(--subtle)}
 .day-label{width:48px;text-align:center}
 .label-start,.label-end{font-weight:600;color:var(--text)}
-.bar-box{width:var(--boxW,48px);height:var(--barH);border-radius:4px;background:var(--ok);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;flex:0 0 auto}
+.bar-box{width:48px;height:14px;border-radius:4px;background:var(--ok);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
 .bar-box.down{background:var(--down)}
 .bar-box.degraded{background:var(--warning)}
 .bar-box.paused{background:var(--paused)}
@@ -207,18 +205,6 @@ a:hover{text-decoration:underline}
 </div>
 
 <div class="status-container" id="statusContainer" role="region" aria-label="Services status">
-
-  <div class="timeline-header" style="margin-bottom:12px;">
-    <h2 class="timeline-title" style="color:var(--text);font-size:16px;margin:0;">Status History</h2>
-    <select class="period-selector" id="statusPeriod" aria-label="Select status history range">
-      <option value="24h">Last 24 hours</option>
-      <option value="48h">Last 48 hours</option>
-      <option value="7d" selected>Last 7 days</option>
-      <option value="14d">Last 14 days</option>
-      <option value="30d">Last 30 days</option>
-    </select>
-  </div>
-
   <div class="app-section">
     <div class="top-bar"><span class="status-icon"></span><span>Loading…</span></div>
     <div class="status-bar-container">
@@ -282,7 +268,7 @@ document.addEventListener('click', e=>{
 window.addEventListener('online', ()=> $('#offlineBanner').style.display='none');
 window.addEventListener('offline', ()=> $('#offlineBanner').style.display='block');
 
-const DEFAULT_STATUS_PERIOD = "7d";
+const MAX_DAYS = 14;
 const STATUS_NAMES = { operational:'Operational', down:'Down', degraded:'Degraded', paused:'Paused', maintenance:'Maintenance', unknown:'Unknown', unlinked:'Unlinked' };
 
 const tip = $('#statusTooltip');
@@ -297,185 +283,62 @@ function positionTooltip(e){
 }
 
 function periodToHours(p){ 
-  return { "24h":24,"48h":48,"7d":168,"14d":336,"30d":720,"90d":2160,"120d":2880 }[p] || 168; 
-}[p] || 168; 
+  return { '24h':24,'7d':168,'30d':720,'90d':2160,'120d':2880 }[p] || 168; 
 }
 
-
-function pad2(n){ return String(n).padStart(2,'0'); }
-function hourKeyFromMs(ms){
-  const d = new Date(ms);
-  // YYYY-MM-DDTHH
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}`;
-}
-function hourLabelFromMs(ms){
-  const d = new Date(ms);
-  return d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit'});
-}
-
-/*
-  Build explicit status "events" from service.history:
-  - Supports legacy day keys: YYYY-MM-DD (interpreted at 00:00 local time)
-  - Supports hour keys: YYYY-MM-DDTHH (interpreted at HH:00 local time)
-  - Also supports payload.timestamp (preferred if present)
-*/
-function buildExplicitEvents(service){
-  const ev=[];
-  const h = service?.history || {};
-  for(const [k,val] of Object.entries(h)){
-    let t;
-    if(typeof val === 'object' && val && typeof val.timestamp === 'number') t = val.timestamp;
-    else{
-      // key-based parsing (local time)
-      if(/^\d{4}-\d{2}-\d{2}T\d{2}$/.test(k)){
-        const [dPart,hPart]=k.split('T');
-        t = new Date(`${dPart}T${hPart}:00:00`).getTime();
-      }else if(/^\d{4}-\d{2}-\d{2}$/.test(k)){
-        t = new Date(`${k}T00:00:00`).getTime();
-      }else{
-        // unknown key shape; ignore
-        continue;
-      }
-    }
-    const st = (typeof val === 'string') ? val : (val?.status || 'unknown');
-    const notes = (typeof val === 'object' && val) ? (val.notes||'') : '';
-    const ver = (typeof val === 'object' && val) ? (val.version||'') : '';
-    ev.push({ time:t, status:st, notes, version:ver, key:k });
+function renderBars(service){
+  const today = new Date().toISOString().split('T')[0];
+  let boxes=[], labels=[];
+  for(let i=MAX_DAYS-1;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const ds=d.toISOString().split('T')[0];
+    let status='unlinked';
+    const v = service.history?.[ds];
+    if(v){ status = (typeof v==='string') ? v : (v.status||'unknown'); }
+    const cls=status==='operational'?'operational':status;
+    boxes.push(`<div class="bar-box ${cls}" data-status="${status}" data-date="${ds}" aria-label="${d.toLocaleDateString()} ${STATUS_NAMES[status]}"></div>`);
+    if(i===MAX_DAYS-1) labels.push(`<div class="day-label label-start">${MAX_DAYS} days ago</div>`);
+    else if(i===0)     labels.push(`<div class="day-label label-end">Today</div>`);
+    else               labels.push('<div class="day-label"></div>');
   }
-
-  // Optional "currentStatus" support (dashboard writes this)
-  if(service?.currentStatus){
-    const since = (typeof service.currentStatusSince === 'number') ? service.currentStatusSince : (typeof service.lastUpdated === 'number' ? service.lastUpdated : Date.now());
-    ev.push({ time: since, status: service.currentStatus, notes:'', version:'', key:'(currentStatus)' });
-  }
-
-  ev.sort((a,b)=>a.time-b.time);
-  return ev;
-}
-
-/*
-  For the requested range, create an hourly series, carrying forward the last known status.
-  This matches "if you set status at 10PM, the next hours follow that status until another change".
-*/
-function buildHourlySeries(service, hoursBack){
-  const now = Date.now();
-  const startMs = now - (hoursBack-1)*3600000;
-  const startHour = new Date(startMs);
-  startHour.setMinutes(0,0,0);
-  const hours = [];
-  const events = buildExplicitEvents(service);
-
-  let idx = 0;
-  let curStatus = 'unlinked';
-  let curNotes = '';
-  let curVer = '';
-  let lastEventTime = null;
-
-  // advance idx to the last event <= startHour
-  while(idx < events.length && events[idx].time <= startHour.getTime()){
-    curStatus = events[idx].status || 'unknown';
-    curNotes = events[idx].notes || '';
-    curVer   = events[idx].version || '';
-    lastEventTime = events[idx].time;
-    idx++;
-  }
-
-  for(let i=0;i<hoursBack;i++){
-    const ms = startHour.getTime() + i*3600000;
-
-    // apply any events up to this hour
-    while(idx < events.length && events[idx].time <= ms){
-      curStatus = events[idx].status || 'unknown';
-      curNotes = events[idx].notes || '';
-      curVer   = events[idx].version || '';
-      lastEventTime = events[idx].time;
-      idx++;
-    }
-
-    hours.push({
-      ms,
-      key: hourKeyFromMs(ms),
-      status: curStatus || 'unknown',
-      notes: curNotes,
-      version: curVer,
-      lastEventTime
-    });
-  }
-  return hours;
-}
-
-function renderBars(service, hoursBack){
-  const series = buildHourlySeries(service, hoursBack);
-
-  // skinny boxes: 6px default, but clamp on small screens a bit wider for touch
-  const boxW = window.matchMedia('(max-width: 520px)').matches ? 8 : 6;
-
-  const boxes = series.map(h=>{
-    const st = h.status || 'unknown';
-    const cls = st==='operational'?'operational':st;
-    const aria = `${hourLabelFromMs(h.ms)} ${STATUS_NAMES[st]||st}`;
-    return `<div class="bar-box ${cls}" style="--boxW:${boxW}px" data-status="${st}" data-hour="${h.key}" data-ms="${h.ms}" data-notes="${escapeAttr(h.notes||'')}" data-version="${escapeAttr(h.version||'')}" aria-label="${escapeAttr(aria)}"></div>`;
-  });
-
-  const startText = hoursBack >= 24 ? `${Math.round(hoursBack/24)}d ago` : `${hoursBack}h ago`;
-  const labels = [
-    `<div class="day-label label-start">${startText}</div>`,
-    `<div class="day-label"></div>`,
-    `<div class="day-label label-end">Now</div>`
-  ];
   return `<div class="status-bar-container"><div class="status-bar">${boxes.join('')}</div><div class="day-labels">${labels.join('')}</div></div>`;
 }
 
 function renderServiceSection(service){
-  const hoursBack = periodToHours($('#statusPeriod')?.value || DEFAULT_STATUS_PERIOD);
-  const series = buildHourlySeries(service, hoursBack);
-  const last = series[series.length-1] || { status:'unlinked' };
-  const nowStatus = last.status || 'unlinked';
-  const cls = nowStatus==='operational'?'operational':nowStatus;
-
+  const today = new Date().toISOString().split('T')[0];
+  let todayStatus='unlinked';
+  const v = service.history?.[today];
+  if(v){ todayStatus = (typeof v==='string') ? v : (v.status||'unknown'); }
+  const cls=todayStatus==='operational'?'operational':todayStatus;
   return `<div class="app-section">
     <div class="top-bar"><span class="status-icon ${cls}" aria-hidden="true"></span><span>${escapeHtml(service.name||'Unnamed Service')}</span></div>
-    ${renderBars(service, hoursBack)}
+    ${renderBars(service)}
   </div>`;
 }
+
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-
-function getCurrentServiceStatus(service){
-  // Prefer explicit currentStatus written by dashboard
-  if(service?.currentStatus) return service.currentStatus;
-
-  const events = buildExplicitEvents(service);
-  const now = Date.now();
-  let cur = 'unlinked';
-  for(let i=0;i<events.length;i++){
-    if(events[i].time<=now) cur = events[i].status || 'unknown';
-    else break;
-  }
-  return cur || 'unknown';
 }
 
 function updateGeneralStatus(services){
   const icon=$('#generalStatusIcon'), label=$('#generalStatusLabel'), last=$('#generalLastUpdated');
   const list = Object.values(services||{});
   if(list.length===0){ label.textContent='No services available'; icon.style.backgroundColor='#777'; last.textContent=''; return; }
-
+  const todayStr=new Date().toISOString().split('T')[0];
   const statusSet=new Set(); let newestUpdate=0;
   list.forEach(s=>{
     if(s.lastUpdated&&s.lastUpdated>newestUpdate) newestUpdate=s.lastUpdated;
-    const st = getCurrentServiceStatus(s);
-    if(!['unknown','unlinked',undefined].includes(st)) statusSet.add(st);
+    const todayData=s.history?.[todayStr];
+    let todayStatus='unlinked';
+    if(todayData){ if(typeof todayData==='string') todayStatus=todayData; else if(todayData.status) todayStatus=todayData.status; }
+    if(!['unknown','unlinked',undefined].includes(todayStatus)) statusSet.add(todayStatus);
   });
-
   const statuses=[...statusSet];
   if(statuses.includes('down')) icon.style.backgroundColor='var(--down)';
   else if(statuses.includes('degraded')) icon.style.backgroundColor='var(--warning)';
   else if(statuses.includes('paused')) icon.style.backgroundColor='var(--paused)';
   else if(statuses.includes('maintenance')) icon.style.backgroundColor='var(--maintenance)';
   else icon.style.backgroundColor='var(--ok)';
-
   if(statuses.length===0||(statuses.length===1&&statuses[0]==='operational')) label.textContent='All services are online';
   else{
     const readable={down:'down',degraded:'degraded',paused:'paused',maintenance:'under maintenance'};
@@ -484,6 +347,7 @@ function updateGeneralStatus(services){
   }
   last.textContent=newestUpdate?`Last updated ${timeAgo(newestUpdate)}`:'';
 }
+
 function updateAnnouncement(text){
   const el=$('#generalAnnouncement');
   if(text?.trim()){ el.style.display='block'; el.textContent=text; } else el.style.display='none';
@@ -602,42 +466,14 @@ async function resolveProjectId(projectParam){
 function mountServiceBars(){
   $('#statusContainer').querySelectorAll('.bar-box').forEach(b=>{
     b.addEventListener('mouseenter',e=>{
-      const st=e.target.dataset.status, ms=Number(e.target.dataset.ms||0), hour=e.target.dataset.hour;
-      const d = ms ? new Date(ms) : (hour? new Date(hour.replace('T', 'T')+':00:00'): new Date());
-      const notes = e.target.dataset.notes||'';
-      const ver = e.target.dataset.version||'';
-      const when = d.toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-      const extra = `${ver?`<br><span style=\"color:var(--subtle)\">v${escapeHtml(ver)}</span>`:''}${notes?`<br><span style=\"color:var(--subtle)\">${escapeHtml(notes)}</span>`:''}`;
-      showTooltip(e,`<strong>${when}</strong><br>${STATUS_NAMES[st]||st}${extra}`);
+      const st=e.target.dataset.status, ds=e.target.dataset.date;
+      const d=new Date(ds);
+      showTooltip(e,`<strong>${d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</strong><br>${STATUS_NAMES[st]||st}`);
     });
     b.addEventListener('mousemove',positionTooltip);
     b.addEventListener('mouseleave',hideTooltip);
   });
 }
-
-
-function renderAllServices(services){
-  const list = Object.values(services||{});
-  const container = $('#statusContainer');
-  const header = container.querySelector('#statusPeriod')?.closest('.timeline-header');
-  // Keep the "Status History" header + selector intact
-  const headerHtml = header ? header.outerHTML : '';
-  container.innerHTML = headerHtml;
-
-  container.insertAdjacentHTML('beforeend', list.length ? list
-    .sort((a,b)=>(a.order??0)-(b.order??0))
-    .map(renderServiceSection).join('')
-    : '<div class="app-section" style="text-align:center;color:var(--subtle);padding:28px">No services yet.</div>');
-
-  updateGeneralStatus(services);
-  mountServiceBars();
-}
-
-
-$('#statusPeriod')?.addEventListener('change', ()=>{
-  const services = window.__lastServices || {};
-  renderAllServices(services);
-});
 
 (async function boot(){
   const param = getProjectParam();
@@ -670,7 +506,15 @@ $('#statusPeriod')?.addEventListener('change', ()=>{
     const services = snap.val() || {};
     window.__lastServices = services;
 
-    renderAllServices(services);
+    const list = Object.values(services);
+    const container = $('#statusContainer');
+    container.innerHTML = list.length ? list
+      .sort((a,b)=>(a.order??0)-(b.order??0))
+      .map(renderServiceSection).join('')
+      : '<div class="app-section" style="text-align:center;color:var(--subtle);padding:28px">No services yet.</div>';
+
+    updateGeneralStatus(services);
+    mountServiceBars();
 
     // timeline refresh if data changes
     const per = $('#activityPeriod').value;

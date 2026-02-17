@@ -520,17 +520,6 @@
         }
         
         function now(){ return Date.now(); }
-
-        function pad2(n){ return String(n).padStart(2,"0"); }
-        function floorToHourMs(d){
-          const x = new Date(d);
-          x.setMinutes(0,0,0);
-          return x.getTime();
-        }
-        function hourKeyFromMs(ms){
-          const d = new Date(ms);
-          return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}`;
-        }
         
         let currentUid = null;
         let currentProjectId = null;
@@ -1109,11 +1098,7 @@ async function selectProject(projectId){
               </div>
               <div>
                 <label>Target Date</label>
-                <input data-k="date" type="date" value="${new Date().toISOString().split(\"T\")[0]}">
-              </div>
-              <div>
-                <label>Target Hour</label>
-                <input data-k="datetime" type="datetime-local" value="${(()=>{const d=new Date(); d.setMinutes(0,0,0); return d.toISOString().slice(0,16);})()}">
+                <input data-k="date" type="date" value="${new Date().toISOString().split("T")[0]}">
               </div>
             </div>
         
@@ -1132,25 +1117,15 @@ async function selectProject(projectId){
               </div>
             </div>
         
-            <div class="btn-row" style="flex-wrap:wrap;">
+            <div class="btn-row">
               <button class="btn-primary" data-act="setDate">Update Status (Single Day)</button>
-              <button class="btn-primary" data-act="setHour">Update Status (Single Hour)</button>
               <button class="btn-ghost" data-act="bulk14">Bulk Set (14 Days)</button>
-              <select data-k="bulkHours" style="max-width:220px;">
-                <option value="24">Bulk (Last 24 hours)</option>
-                <option value="48">Bulk (Last 48 hours)</option>
-                <option value="168" selected>Bulk (Last 7 days)</option>
-                <option value="336">Bulk (Last 14 days)</option>
-              </select>
-              <button class="btn-ghost" data-act="bulkHours">Bulk Set (Hours)</button>
             </div>
           `;
         
           const actRemove = wrap.querySelector('[data-act="remove"]');
           const actSet    = wrap.querySelector('[data-act="setDate"]');
-          const actSetHour= wrap.querySelector('[data-act="setHour"]');
           const actBulk   = wrap.querySelector('[data-act="bulk14"]');
-          const actBulkHours = wrap.querySelector('[data-act="bulkHours"]');
           const nameInput = wrap.querySelector('input[data-k="name"]');
           const orderInput= wrap.querySelector('input[data-k="order"]');
         
@@ -1183,80 +1158,10 @@ async function selectProject(projectId){
         
             const updates = {};
             updates[`services/${currentProjectId}/${s.id}/history/${date}`] = payload;
-            // Keep current status in sync (day-based change)
-            updates[`services/${currentProjectId}/${s.id}/currentStatus`] = status;
-            updates[`services/${currentProjectId}/${s.id}/currentStatusSince`] = new Date(`${date}T00:00:00`).getTime();
-            updates[`services/${currentProjectId}/${s.id}/currentStatus`] = status;
-            updates[`services/${currentProjectId}/${s.id}/currentStatusSince`] = (new Date()).setMinutes(0,0,0);
             updates[`services/${currentProjectId}/${s.id}/lastUpdated`] = now();
             await update(ref(db), updates);
             toast("Saved date");
           });
-
-          actSetHour.addEventListener("click", async ()=>{
-            if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-
-            const dtVal = wrap.querySelector('input[data-k="datetime"]').value;
-            if(!dtVal){ toast("Pick a target hour"); return; }
-
-            const hourMs = floorToHourMs(new Date(dtVal));
-            const key = hourKeyFromMs(hourMs);
-
-            const status = wrap.querySelector('select[data-k="status"]').value;
-            const version = wrap.querySelector('input[data-k="version"]').value.trim();
-            const notes = wrap.querySelector('input[data-k="notes"]').value.trim();
-
-            // Store the represented hour as timestamp (for correct ordering on status page)
-            const payload = { status, timestamp: hourMs };
-            if(version) payload.version = version;
-            if(notes) payload.notes = notes;
-
-            const updates = {};
-            updates[`services/${currentProjectId}/${s.id}/history/${key}`] = payload;
-
-            // Persist "currentStatus" so the public page can carry it forward even if no new entries exist
-            updates[`services/${currentProjectId}/${s.id}/currentStatus`] = status;
-            updates[`services/${currentProjectId}/${s.id}/currentStatusSince`] = hourMs;
-
-            updates[`services/${currentProjectId}/${s.id}/lastUpdated`] = now();
-            await update(ref(db), updates);
-            toast("Saved hour");
-          });
-
-          actBulkHours.addEventListener("click", async ()=>{
-            if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
-
-            const status = wrap.querySelector('select[data-k="status"]').value;
-            const hours = Number(wrap.querySelector('select[data-k="bulkHours"]').value || 168);
-            if(!confirm(`Set "${status}" for last ${hours} hours?`)) return;
-
-            const version = wrap.querySelector('input[data-k="version"]').value.trim();
-            const notes = wrap.querySelector('input[data-k="notes"]').value.trim();
-
-            const updates = {};
-            const base = new Date(); base.setMinutes(0,0,0);
-
-            for(let i=hours-1;i>=0;i--){
-              const d = new Date(base.getTime() - i*3600000);
-              const ms = d.getTime();
-              const key = hourKeyFromMs(ms);
-
-              const payload = { status, timestamp: ms };
-              if(version) payload.version = version;
-              if(notes) payload.notes = notes;
-
-              updates[`services/${currentProjectId}/${s.id}/history/${key}`] = payload;
-            }
-
-            updates[`services/${currentProjectId}/${s.id}/currentStatus`] = status;
-            updates[`services/${currentProjectId}/${s.id}/currentStatusSince`] = base.getTime();
-
-            updates[`services/${currentProjectId}/${s.id}/lastUpdated`] = now();
-            await update(ref(db), updates);
-            toast("Bulk hours saved");
-          });
-
-
           actBulk.addEventListener("click", async ()=>{
             if(!["owner","admin"].includes(currentRole)){ toast("Need admin/owner"); return; }
             const status = wrap.querySelector('select[data-k="status"]').value;
