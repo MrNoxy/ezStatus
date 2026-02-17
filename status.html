@@ -417,7 +417,7 @@ function renderBars(service){
     `;
   }
 
-  // ==================================
+// ==================================
 // 14d+ → CALENDAR DAYS INCLUDING TODAY
 // ==================================
 const days = totalHours / 24;
@@ -433,7 +433,6 @@ for(let d = 0; d < days; d++){
 
   const dayStart = start + d*24*36e5;
 
-  // If this is today → only go until current hour
   const isToday = dayStart === todayStart;
   const dayEnd = isToday ? currentHour + 36e5 : dayStart + 24*36e5;
 
@@ -457,7 +456,7 @@ for(let d = 0; d < days; d++){
     }
   }
 
-  // If today → force it to reflect EXACT CURRENT state
+  // Force today to reflect EXACT current state
   if(isToday){
     worst = getStatusAt(service, now);
   }
@@ -468,6 +467,13 @@ for(let d = 0; d < days; d++){
       data-ts="${dayStart}">
     </div>`
   );
+}
+
+return `
+  <div class="status-bar-container">
+    <div class="status-bar daily">${boxes.join('')}</div>
+  </div>
+`;
 }
 
 
