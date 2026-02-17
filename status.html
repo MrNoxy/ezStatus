@@ -9,11 +9,12 @@
 <title>Status</title>
 
 <style>
+/* (Your original look, mostly preserved) */
 :root{
   --bg:#000000;--card:#161b22;--card2:#11141e;--tooltip:#11141e;
   --border:#30363d;--text:#c9d1d9;--subtle:#8b949e;--accent:#58a6ff;
   --ok:#00c17c;--down:#d2344e;--warning:#f0a500;--paused:#f0de4e;
-  --maintenance:#6a42f5;--unknown:#777;--unlinked:#2a2f38;
+  --maintenance:#6a42f5;--unknown:#777;--unlinked:#555a66;
   --radius:12px;--gap:24px;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
@@ -22,28 +23,62 @@
   --bg:#ffffff;--card:#f6f8fa;--card2:#f6f8fa;--tooltip:#f6f8fa;
   --border:#d0d7de;--text:#24292f;--subtle:#656d76;--accent:#0969da;
   --ok:#1a7f37;--down:#d1242f;--warning:#d4a72c;--paused:#bf8700;
-  --maintenance:#8250df;--unknown:#656d76;--unlinked:#ebf0f4;
+  --maintenance:#8250df;--unknown:#656d76;--unlinked:#8c959f;
 }
 [data-theme="dark-purple"]{
   --bg:#0b0514;--card:#1f0e33;--card2:#180b26;--tooltip:#180b26;
   --border:#3c1e5c;--text:#e2d5f3;--subtle:#a18daf;--accent:#a78bfa;
   --ok:#34d399;--down:#f87272;--warning:#fbbf24;--paused:#fde047;
-  --maintenance:#c084fc;--unknown:#6b7280;--unlinked:#382e4e;
+  --maintenance:#c084fc;--unknown:#6b7280;--unlinked:#4b5563;
 }
 [data-theme="green"]{
   --bg:#021a03;--card:#063a06;--card2:#042b04;--tooltip:#042b04;
   --border:#166416;--text:#dcfce7;--subtle:#a7f3d0;--accent:#4ade80;
   --ok:#22c55e;--down:#ef4444;--warning:#f59e0b;--paused:#fcd34d;
-  --maintenance:#818cf8;--unknown:#6b7280;--unlinked:#1f3320;
+  --maintenance:#818cf8;--unknown:#6b7280;--unlinked:#4b5563;
 }
 [data-theme="blue"]{
   --bg:#00172a;--card:#003355;--card2:#002944;--tooltip:#002944;
   --border:#005c99;--text:#e0f2fe;--subtle:#7dd3fc;--accent:#38bdf8;
   --ok:#22d3ee;--down:#f43f5e;--warning:#facc15;--paused:#fde047;
-  --maintenance:#818cf8;--unknown:#64748b;--unlinked:#1e4066;
+  --maintenance:#818cf8;--unknown:#64748b;--unlinked:#475569;
 }
-/* ... keeping other themes concise for brevity, add them back if needed ... */
-
+[data-theme="dark-rosa"]{
+  --bg:#1c0615;--card:#3b0f2b;--card2:#2e0b22;--tooltip:#2e0b22;
+  --border:#6b1d4f;--text:#fce7f3;--subtle:#f9a8d4;--accent:#f472b6;
+  --ok:#34d399;--down:#fb7185;--warning:#fbbf24;--paused:#fde047;
+  --maintenance:#c084fc;--unknown:#6b7280;--unlinked:#4b5563;
+}
+[data-theme="light-rosa"]{
+  --bg:#fff1f2;--card:#ffe4e6;--card2:#fed7da;--tooltip:#fed7da;
+  --border:#fda4af;--text:#881337;--subtle:#f43f5e;--accent:#ec4899;
+  --ok:#10b981;--down:#e11d48;--warning:#f59e0b;--paused:#fcd34d;
+  --maintenance:#8b5cf6;--unknown:#9ca3af;--unlinked:#6b7280;
+}
+[data-theme="halloween"]{
+  --bg:#1c110a;--card:#3a200f;--card2:#2c180a;--tooltip:#2c180a;
+  --border:#7c3f0f;--text:#fbbf24;--subtle:#fdba74;--accent:#f97316;
+  --ok:#84cc16;--down:#dc2626;--warning:#f59e0b;--paused:#fde047;
+  --maintenance:#a855f7;--unknown:#6b7280;--unlinked:#4b5563;
+}
+[data-theme="christmas"]{
+  --bg:#0f1a0f;--card:#1a3a1a;--card2:#122912;--tooltip:#122912;
+  --border:#166534;--text:#dcfce7;--subtle:#86efac;--accent:#22c55e;
+  --ok:#22c55e;--down:#ef4444;--warning:#fbbf24;--paused:#fde047;
+  --maintenance:#818cf8;--unknown:#6b7280;--unlinked:#4b5563;
+}
+[data-theme="hack"]{
+  --bg:#000;--card:#0d0d0d;--card2:#0a0a0a;--tooltip:#0a0a0a;
+  --border:#00ff00;--text:#00ff00;--subtle:#39ff14;--accent:#00ff41;
+  --ok:#00ff00;--down:#ff073a;--warning:#ffaa00;--paused:#fff500;
+  --maintenance:#0ff;--unknown:#7c7c7c;--unlinked:#555;
+}
+[data-theme="neon"]{
+  --bg:#0d0221;--card:#1d1033;--card2:#160b26;--tooltip:#160b26;
+  --border:#6e44ff;--text:#f0f;--subtle:#ff44cc;--accent:#00f7ff;
+  --ok:#00ff89;--down:#ff2a6d;--warning:#ffe74c;--paused:#f5ff90;
+  --maintenance:#05d9e8;--unknown:#8c8c8c;--unlinked:#555;
+}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column;align-items:center;padding:40px 0}
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
@@ -66,14 +101,9 @@ a:hover{text-decoration:underline}
 #generalLastUpdated{color:var(--subtle);font-size:13px}
 #generalAnnouncement{color:var(--warning);font-size:13px;white-space:pre-wrap;display:none}
 
-/* CONTROLS (New) */
-.controls-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.view-select{background:var(--card2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;font-size:13px;cursor:pointer}
-.view-select:focus{outline:none;border-color:var(--accent)}
-
 .status-container{width:780px;max-width:95%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;display:flex;flex-direction:column;gap:16px;margin-top:var(--gap)}
 .app-section{display:flex;flex-direction:column;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px}
-.top-bar{display:flex;align-items:center;gap:10px;font-weight:700;margin-bottom:6px}
+.top-bar{display:flex;align-items:center;gap:10px;font-weight:700;margin-bottom:10px}
 .status-icon{width:10px;height:10px;border-radius:50%;background:var(--unlinked)}
 .status-icon.operational{background:var(--ok)}
 .status-icon.down{background:var(--down)}
@@ -83,37 +113,29 @@ a:hover{text-decoration:underline}
 .status-icon.unknown{background:var(--unknown)}
 .status-icon.unlinked{background:var(--unlinked)}
 
-.status-bar-container{width:100%;display:flex;flex-direction:column;gap:6px}
-.status-bar{display:flex;gap:3px;justify-content:space-between}
-.day-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--subtle);margin-top:2px}
-
-/* Updated Bar Box for responsive fitting */
-.bar-box{
-  flex:1;
-  height:24px;
-  border-radius:4px;
-  background:var(--unlinked);
-  cursor:pointer;
-  transition:transform .1s ease, opacity .1s;
-  min-width: 4px; /* Ensure they don't disappear on small screens */
-}
-.bar-box.operational{background:var(--ok)}
+.status-bar-container{width:780px;max-width:95%;display:flex;flex-direction:column;gap:4px}
+.status-bar{display:flex;gap:3px}
+.day-labels{display:flex;gap:3px;font-size:12px;color:var(--subtle)}
+.day-label{width:48px;text-align:center}
+.label-start,.label-end{font-weight:600;color:var(--text)}
+.bar-box{width:48px;height:14px;border-radius:4px;background:var(--ok);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
 .bar-box.down{background:var(--down)}
 .bar-box.degraded{background:var(--warning)}
 .bar-box.paused{background:var(--paused)}
 .bar-box.maintenance{background:var(--maintenance)}
 .bar-box.unknown{background:var(--unknown)}
-.bar-box.unlinked{background:var(--unlinked); opacity: 0.5;} /* Visually distinguish unlinked */
+.bar-box.unlinked{background:var(--unlinked)}
+.bar-box:hover{transform:scale(1.05)}
+#statusTooltip{position:fixed;background:var(--tooltip);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:1000;max-width:280px;line-height:1.4}
 
-.bar-box:hover{transform:scaleY(1.15); opacity:1}
-
-#statusTooltip{position:fixed;background:var(--tooltip);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;pointer-events:none;opacity:0;transition:opacity .1s;z-index:1000;max-width:280px;line-height:1.4;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
-
-/* Timeline */
+  
+/* --------------  RECENT ACTIVITY  ––  infinite scroll  -------------- */
 .timeline-container{width:780px;max-width:95%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-top:var(--gap);animation:fadeIn .5s ease}
 .timeline-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gap)}
 .timeline-title{font-size:18px;font-weight:700;color:var(--warning)}
 .period-selector{background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;transition:border-color .2s}
+.period-selector:hover{border-color:var(--accent)}
+.period-selector:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(88,166,255,.1)}
 .timeline{position:relative;padding-left:24px}
 .timeline::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--border)}
 .timeline-item{position:relative;padding-bottom:var(--gap);animation:fadeIn .3s ease both}
@@ -129,7 +151,12 @@ a:hover{text-decoration:underline}
 .timeline-description{color:var(--subtle);font-size:14px;line-height:1.5;white-space:pre-wrap}
 .timeline-meta{display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--subtle)}
 .timeline-badge{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:4px 8px;font-size:11px;font-weight:600}
+.timeline-badge.success{background:rgba(0,193,124,.1);border-color:var(--ok);color:var(--ok)}
+.timeline-badge.warning{background:rgba(240,165,0,.1);border-color:var(--warning);color:var(--warning)}
+.timeline-badge.danger{background:rgba(210,52,78,.1);border-color:var(--down);color:var(--down)}
+.timeline-badge.info{background:rgba(88,166,255,.1);border-color:var(--accent);color:var(--accent)}
 .copy-btn{margin-left:auto;background:0 0;border:none;color:var(--accent);cursor:pointer;font-size:12px}
+.copy-btn:hover{text-decoration:underline}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (max-width:800px){
@@ -142,11 +169,19 @@ a:hover{text-decoration:underline}
 
 <div class="offline-banner" id="offlineBanner">You’re offline – data may be stale</div>
 
+<!--  vertical theme switcher  -->
 <div class="theme-switcher" aria-label="Theme switcher">
   <button class="theme-btn" data-theme="dark" title="Dark">🌙</button>
   <button class="theme-btn" data-theme="light" title="Light">☀️</button>
-  <button class="theme-btn" data-theme="blue" title="Blue">🔵</button>
+  <button class="theme-btn" data-theme="dark-purple" title="Dark Purple">🟣</button>
   <button class="theme-btn" data-theme="green" title="Green">🟢</button>
+  <button class="theme-btn" data-theme="blue" title="Blue">🔵</button>
+  <button class="theme-btn" data-theme="dark-rosa" title="Dark Rosa">🌸</button>
+  <button class="theme-btn" data-theme="light-rosa" title="Light Rosa">💗</button>
+  <button class="theme-btn" data-theme="halloween" title="Halloween">🎃</button>
+  <button class="theme-btn" data-theme="christmas" title="Christmas">🎄</button>
+  <button class="theme-btn" data-theme="hack" title="Hack">👾</button>
+  <button class="theme-btn" data-theme="neon" title="Neon">🌆</button>
 </div>
 
 <div class="header">
@@ -170,17 +205,13 @@ a:hover{text-decoration:underline}
 </div>
 
 <div class="status-container" id="statusContainer" role="region" aria-label="Services status">
-  <div class="controls-header">
-    <div style="font-weight:700;font-size:14px">System Status</div>
-    <select id="statusViewRange" class="view-select" aria-label="Status Range">
-      <option value="24h">Last 24 Hours</option>
-      <option value="7d">Last 7 Days</option>
-      <option value="30d">Last 30 Days</option>
-      </select>
-  </div>
-  <div id="servicesList">
-    <div class="app-section">
-      <div class="top-bar"><span class="status-icon"></span><span>Loading…</span></div>
+  <div class="app-section">
+    <div class="top-bar"><span class="status-icon"></span><span>Loading…</span></div>
+    <div class="status-bar-container">
+      <div class="status-bar">
+        <div class="bar-box unlinked"></div><div class="bar-box unlinked"></div><div class="bar-box unlinked"></div>
+        <div class="bar-box unlinked"></div><div class="bar-box unlinked"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -192,6 +223,8 @@ a:hover{text-decoration:underline}
       <option value="24h">Last 24 hours</option>
       <option value="7d" selected>Last 7 days</option>
       <option value="30d">Last 30 days</option>
+      <option value="90d">Last 90 days</option>
+      <option value="120d">Last 120 days</option>
     </select>
   </div>
   <div class="timeline" id="activityTimeline" aria-live="polite"></div>
@@ -200,6 +233,7 @@ a:hover{text-decoration:underline}
 
 <div id="statusTooltip" role="tooltip"></div>
 
+<!-- Firebase (modular) -->
 <script type="module">
 import { app, auth, db } from "./firebase.js";
 import {
@@ -234,8 +268,8 @@ document.addEventListener('click', e=>{
 window.addEventListener('online', ()=> $('#offlineBanner').style.display='none');
 window.addEventListener('offline', ()=> $('#offlineBanner').style.display='block');
 
-const STATUS_NAMES = { operational:'Operational', down:'Down', degraded:'Degraded', paused:'Paused', maintenance:'Maintenance', unknown:'Unknown', unlinked:'No Data' };
-const STATUS_PRIORITY = { down:10, degraded:5, maintenance:3, paused:2, operational:1, unknown:0, unlinked:0 };
+const MAX_DAYS = 14;
+const STATUS_NAMES = { operational:'Operational', down:'Down', degraded:'Degraded', paused:'Paused', maintenance:'Maintenance', unknown:'Unknown', unlinked:'Unlinked' };
 
 const tip = $('#statusTooltip');
 function showTooltip(e, html){ tip.innerHTML = html; tip.style.opacity='1'; positionTooltip(e); }
@@ -248,163 +282,70 @@ function positionTooltip(e){
   tip.style.left = x+'px'; tip.style.top  = y+'px';
 }
 
+function periodToHours(p){ 
+  return { '24h':24,'7d':168,'30d':720,'90d':2160,'120d':2880 }[p] || 168; 
+}
+
+function renderBars(service){
+  const today = new Date().toISOString().split('T')[0];
+  let boxes=[], labels=[];
+  for(let i=MAX_DAYS-1;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const ds=d.toISOString().split('T')[0];
+    let status='unlinked';
+    const v = service.history?.[ds];
+    if(v){ status = (typeof v==='string') ? v : (v.status||'unknown'); }
+    const cls=status==='operational'?'operational':status;
+    boxes.push(`<div class="bar-box ${cls}" data-status="${status}" data-date="${ds}" aria-label="${d.toLocaleDateString()} ${STATUS_NAMES[status]}"></div>`);
+    if(i===MAX_DAYS-1) labels.push(`<div class="day-label label-start">${MAX_DAYS} days ago</div>`);
+    else if(i===0)     labels.push(`<div class="day-label label-end">Today</div>`);
+    else               labels.push('<div class="day-label"></div>');
+  }
+  return `<div class="status-bar-container"><div class="status-bar">${boxes.join('')}</div><div class="day-labels">${labels.join('')}</div></div>`;
+}
+
+function renderServiceSection(service){
+  const today = new Date().toISOString().split('T')[0];
+  let todayStatus='unlinked';
+  const v = service.history?.[today];
+  if(v){ todayStatus = (typeof v==='string') ? v : (v.status||'unknown'); }
+  const cls=todayStatus==='operational'?'operational':todayStatus;
+  return `<div class="app-section">
+    <div class="top-bar"><span class="status-icon ${cls}" aria-hidden="true"></span><span>${escapeHtml(service.name||'Unnamed Service')}</span></div>
+    ${renderBars(service)}
+  </div>`;
+}
+
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-/* ================== CORE LOGIC ================== */
-
-// Convert db history keys (YYYY-MM-DD or YYYY-MM-DDTHH:mm) to timestamp number
-function parseKey(k){
-  if(k.includes('T')) return new Date(k).getTime();
-  return new Date(k + 'T00:00:00').getTime(); // Assume start of day
-}
-
-// Get the effective status at a specific point in time
-// loops backwards to find the last set status.
-function getStatusAtTime(history, targetTime){
-  if(!history) return 'operational'; // Default if no history at all
-  
-  // Convert history to array [ {ts, status} ] sorted by time
-  const entries = Object.entries(history).map(([k,v])=>{
-    let st = (typeof v==='string') ? v : (v.status||'unknown');
-    return { ts: parseKey(k), status: st };
-  }).sort((a,b)=>a.ts - b.ts);
-
-  // Find the closest entry <= targetTime
-  let currentStatus = 'operational'; // Default base state
-  for(const e of entries){
-    if(e.ts <= targetTime){
-      currentStatus = e.status;
-    } else {
-      break; // Future entries don't affect this moment
-    }
-  }
-  return currentStatus;
-}
-
-function generateTimeSlices(range){
-  const slices = [];
-  const now = Date.now();
-  
-  if(range === '24h'){
-    // Generate last 24 hours (hourly buckets)
-    // Round 'now' down to nearest hour
-    const currentHour = new Date(); 
-    currentHour.setMinutes(0,0,0);
-    const endTs = currentHour.getTime();
-    
-    for(let i=23; i>=0; i--){
-      const ts = endTs - (i * 3600000);
-      slices.push({
-        ts: ts,
-        label: new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-        fullDate: new Date(ts).toLocaleString()
-      });
-    }
-  } else {
-    // Days (7d, 30d, 90d)
-    const days = range==='7d'?7 : (range==='30d'?30 : 90);
-    const today = new Date(); 
-    today.setHours(0,0,0,0);
-    const endTs = today.getTime();
-    
-    for(let i=days-1; i>=0; i--){
-      const ts = endTs - (i * 86400000);
-      slices.push({
-        ts: ts,
-        label: new Date(ts).toLocaleDateString(undefined, {month:'short', day:'numeric'}),
-        fullDate: new Date(ts).toLocaleDateString(undefined, {weekday:'short', year:'numeric', month:'long', day:'numeric'})
-      });
-    }
-  }
-  return slices;
-}
-
-function renderBars(service, range){
-  const slices = generateTimeSlices(range);
-  const boxes = slices.map(slice => {
-    // We check status at the END of the slice duration to be safe, 
-    // or arguably at the START. Let's use the slice timestamp.
-    // However, if data is stored as "2023-01-01", it acts as 00:00.
-    // If we request status for 10:00 AM, it should pick up the 00:00 status.
-    const st = getStatusAtTime(service.history, slice.ts);
-    
-    // Determine class
-    const cls = st === 'operational' ? 'operational' : st;
-    
-    return `<div class="bar-box ${cls}" 
-                data-status="${st}" 
-                data-date="${slice.fullDate}" 
-                data-label="${slice.label}"
-                aria-label="${slice.label}: ${STATUS_NAMES[st]}"></div>`;
-  });
-
-  // Labels for start and end
-  const startLabel = slices[0].label;
-  const endLabel = range==='24h' ? 'Now' : 'Today';
-
-  return `
-    <div class="status-bar-container">
-      <div class="status-bar">${boxes.join('')}</div>
-      <div class="day-labels">
-        <span>${startLabel}</span>
-        <span>${endLabel}</span>
-      </div>
-    </div>
-  `;
-}
-
-function renderServiceSection(service, range){
-  const currentStatus = getStatusAtTime(service.history, Date.now());
-  const cls = currentStatus==='operational'?'operational':currentStatus;
-  
-  return `<div class="app-section">
-    <div class="top-bar">
-      <span class="status-icon ${cls}" aria-hidden="true"></span>
-      <span>${escapeHtml(service.name||'Unnamed Service')}</span>
-    </div>
-    ${renderBars(service, range)}
-  </div>`;
 }
 
 function updateGeneralStatus(services){
   const icon=$('#generalStatusIcon'), label=$('#generalStatusLabel'), last=$('#generalLastUpdated');
   const list = Object.values(services||{});
-  
   if(list.length===0){ label.textContent='No services available'; icon.style.backgroundColor='#777'; last.textContent=''; return; }
-
-  // Check CURRENT status of all services
-  const now = Date.now();
-  const statusSet = new Set();
-  let newestUpdate = 0;
-
+  const todayStr=new Date().toISOString().split('T')[0];
+  const statusSet=new Set(); let newestUpdate=0;
   list.forEach(s=>{
-    if(s.lastUpdated && s.lastUpdated > newestUpdate) newestUpdate = s.lastUpdated;
-    const st = getStatusAtTime(s.history, now);
-    statusSet.add(st);
+    if(s.lastUpdated&&s.lastUpdated>newestUpdate) newestUpdate=s.lastUpdated;
+    const todayData=s.history?.[todayStr];
+    let todayStatus='unlinked';
+    if(todayData){ if(typeof todayData==='string') todayStatus=todayData; else if(todayData.status) todayStatus=todayData.status; }
+    if(!['unknown','unlinked',undefined].includes(todayStatus)) statusSet.add(todayStatus);
   });
-
-  const statuses = [...statusSet];
-  
-  // Hierarchy of badness
+  const statuses=[...statusSet];
   if(statuses.includes('down')) icon.style.backgroundColor='var(--down)';
   else if(statuses.includes('degraded')) icon.style.backgroundColor='var(--warning)';
   else if(statuses.includes('paused')) icon.style.backgroundColor='var(--paused)';
   else if(statuses.includes('maintenance')) icon.style.backgroundColor='var(--maintenance)';
   else icon.style.backgroundColor='var(--ok)';
-
-  const badOnes = statuses.filter(s => s !== 'operational' && s !== 'unknown');
-
-  if(badOnes.length === 0){
-    label.textContent = 'All systems operational';
-  } else {
-    const readable = {down:'down', degraded:'degraded', paused:'paused', maintenance:'under maintenance'};
-    const statusWords = badOnes.map(s => readable[s] || s);
-    label.textContent = `Some services are ${statusWords.join(', ')}`;
+  if(statuses.length===0||(statuses.length===1&&statuses[0]==='operational')) label.textContent='All services are online';
+  else{
+    const readable={down:'down',degraded:'degraded',paused:'paused',maintenance:'under maintenance'};
+    const statusWords=statuses.filter(s=>s!=='operational').map(s=>readable[s]||(s.charAt(0).toUpperCase()+s.slice(1)));
+    label.textContent=`Some services are ${statusWords.join(' or ')}`;
   }
-  
-  last.textContent = newestUpdate ? `Last updated ${timeAgo(newestUpdate)}` : '';
+  last.textContent=newestUpdate?`Last updated ${timeAgo(newestUpdate)}`:'';
 }
 
 function updateAnnouncement(text){
@@ -412,169 +353,146 @@ function updateAnnouncement(text){
   if(text?.trim()){ el.style.display='block'; el.textContent=text; } else el.style.display='none';
 }
 
-/* ----- Timeline (Recent Activity) ----- */
+/* ----- Activity timeline (based on your original logic) ----- */
 let timelineAll = [];
 let timelineRendered = 0;
+let lastTimelineHash = '';
+let noMoreEvents = false;
 const PER_PAGE = 25;
 
 function buildMasterTimeline(services, period){
-  const hoursMap = { '24h':24, '7d':168, '30d':720, '90d':2160 };
-  const hrs = hoursMap[period] || 168;
+  const hrs = periodToHours(period);
   const now = Date.now();
   const ev = [];
-
   Object.values(services||{}).forEach(s=>{
     if(!s.history) return;
-    Object.entries(s.history).forEach(([k,val])=>{
-      // Try to determine timestamp of event
-      let t = parseKey(k);
-      // If object has explicit timestamp, prefer that
+    Object.entries(s.history).forEach(([ds,val])=>{
+      let t = new Date(ds).getTime();
       if(typeof val === 'object' && val.timestamp) t = val.timestamp;
-      
-      if((now - t)/36e5 > hrs) return; // filter by range
+      else if(s.lastUpdated){
+        const lastUpDate = new Date(s.lastUpdated).toISOString().split('T')[0];
+        if(ds===lastUpDate) t = s.lastUpdated;
+      }
+      if((now - t)/36e5 > hrs) return;
 
       const st = (typeof val==='string') ? val : (val.status||'unknown');
       const note = (typeof val==='object') ? (val.notes||'') : '';
       const ver  = (typeof val==='object') ? (val.version||'N/A') : 'N/A';
-      
-      // Determine color
       const type = st==='down'?'danger':st==='degraded'?'warning':st==='maintenance'?'info':'success';
-      
       ev.push({
-        type, time: t,
+        type,
+        time: t,
         title: `${s.name} – ${STATUS_NAMES[st]||st}`,
-        description: note || `Status set to ${st}`,
-        service: s.name, version: ver
+        description: note || `Service status changed to ${st}`,
+        service: s.name,
+        version: ver
       });
     });
   });
-
-  ev.sort((a,b)=>b.time - a.time);
+  ev.sort((a,b)=>b.time-a.time);
   timelineAll = ev;
   timelineRendered = 0;
+  noMoreEvents = false;
 }
 
 function renderNextTimelineSlice(){
+  if(noMoreEvents) return;
   const slice = timelineAll.slice(timelineRendered, timelineRendered+PER_PAGE);
   const tl = $('#activityTimeline');
-  
-  if(slice.length===0 && timelineRendered===0){
-    tl.innerHTML = '<div style="color:var(--subtle);padding:10px">No recent activity.</div>';
-    $('#loadMore').style.display='none';
-    return;
-  }
-  
+  if(slice.length===0){ noMoreEvents=true; $('#loadMore').style.display='none'; return; }
+
   const html = slice.map((e,i)=>`
-    <div class="timeline-item ${e.type}" style="animation-delay:${(i)*.03}s">
+    <div class="timeline-item ${e.type}" style="animation-delay:${(timelineRendered+i)*.05}s">
       <div class="timeline-content">
-        <div class="timeline-time">${new Date(e.time).toLocaleString()} (${timeAgo(e.time)})</div>
+        <div class="timeline-time">${timeAgo(e.time)}</div>
         <div class="timeline-title">${escapeHtml(e.title)}</div>
         <div class="timeline-description">${escapeHtml(e.description)}</div>
         <div class="timeline-meta">
           <span class="timeline-badge">${escapeHtml(e.service)}</span>
           ${e.version!=='N/A'?`<span class="timeline-badge">v${escapeHtml(e.version)}</span>`:''}
-          <button class="copy-btn" data-copy="${escapeHtml(e.title)}">Copy</button>
+          <button class="copy-btn" aria-label="Copy details" data-copy="${escapeHtml(e.title)} – ${escapeHtml(e.description)}">Copy</button>
         </div>
       </div>
     </div>
   `).join('');
-  
   tl.insertAdjacentHTML('beforeend', html);
-  
   tl.querySelectorAll('.copy-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click',()=>{
       copyText(btn.dataset.copy);
-      const old=btn.textContent; btn.textContent='Copied';
-      setTimeout(()=>btn.textContent=old, 1000);
+      btn.textContent='Copied';
+      setTimeout(()=>btn.textContent='Copy',1200);
     });
   });
-  
   timelineRendered += slice.length;
-  $('#loadMore').style.display = (timelineRendered >= timelineAll.length) ? 'none' : 'block';
+  $('#loadMore').style.display = (timelineRendered>=timelineAll.length) ? 'none' : 'block';
+  if(timelineRendered>=timelineAll.length) noMoreEvents=true;
 }
-
 $('#loadMore').addEventListener('click', renderNextTimelineSlice);
-$('#activityPeriod').addEventListener('change', refreshTimeline);
-
-function refreshTimeline(){
+$('#activityPeriod').addEventListener('change', ()=> {
   const per = $('#activityPeriod').value;
   const services = window.__lastServices || {};
-  $('#activityTimeline').innerHTML = '';
   buildMasterTimeline(services, per);
+  $('#activityTimeline').innerHTML='';
   renderNextTimelineSlice();
-}
-
-/* ----- Tooltip Logic for Bars ----- */
-function mountServiceBars(){
-  const container = $('#servicesList');
-  container.querySelectorAll('.bar-box').forEach(b=>{
-    b.addEventListener('mouseenter', e=>{
-      const st = e.target.dataset.status;
-      const date = e.target.dataset.date; // full text date
-      const label = e.target.dataset.label; // short label
-      
-      const readable = STATUS_NAMES[st] || st;
-      showTooltip(e, `<strong>${date}</strong><br><span style="text-transform:capitalize">${readable}</span>`);
-    });
-    b.addEventListener('mousemove', positionTooltip);
-    b.addEventListener('mouseleave', hideTooltip);
-  });
-}
-
-/* ----- View Range Switcher ----- */
-$('#statusViewRange').addEventListener('change', ()=>{
-  const range = $('#statusViewRange').value;
-  const services = window.__lastServices || {};
-  renderAllServices(services, range);
 });
 
-function renderAllServices(services, range){
-  const list = Object.values(services);
-  const container = $('#servicesList');
-  
-  if(!list.length){
-    container.innerHTML = '<div class="app-section" style="text-align:center;color:var(--subtle);padding:28px">No services yet.</div>';
-    return;
-  }
-  
-  container.innerHTML = list
-    .sort((a,b)=>(a.order??0)-(b.order??0))
-    .map(s => renderServiceSection(s, range))
-    .join('');
-    
-  mountServiceBars();
-}
-
-/* ----- Init ----- */
+/* ----- Project resolution ----- 
+   Use: status.html?project=<slug OR projectId>
+*/
 function getProjectParam(){
   const u = new URL(location.href);
   return (u.searchParams.get('project') || '').trim();
 }
 async function resolveProjectId(projectParam){
   if(!projectParam) return null;
+
+  // Firebase push IDs almost always start with "-"
+  // If it starts with "-", treat it as a real projectId.
   if(projectParam.startsWith("-")) return projectParam;
+
+  // Otherwise treat it as a slug and resolve via index
   const slugSnap = await get(ref(db, `projectSlugs/${projectParam}`));
-  return slugSnap.val();
+  const projectId = slugSnap.val();
+  if(projectId) return projectId;
+
+  // Fallback: legacy slug lookup (if you don’t have projectSlugs populated)
+  const q = query(ref(db, "projects"), orderByChild("slug"), equalTo(projectParam), limitToFirst(1));
+  const snap = await get(q);
+  const val = snap.val();
+  if(!val) return null;
+  return Object.keys(val)[0];
+}
+
+function mountServiceBars(){
+  $('#statusContainer').querySelectorAll('.bar-box').forEach(b=>{
+    b.addEventListener('mouseenter',e=>{
+      const st=e.target.dataset.status, ds=e.target.dataset.date;
+      const d=new Date(ds);
+      showTooltip(e,`<strong>${d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</strong><br>${STATUS_NAMES[st]||st}`);
+    });
+    b.addEventListener('mousemove',positionTooltip);
+    b.addEventListener('mouseleave',hideTooltip);
+  });
 }
 
 (async function boot(){
   const param = getProjectParam();
   const projectId = await resolveProjectId(param);
-  
   if(!projectId){
     $('#projectName').textContent = "Project not found";
     $('#projectSubtitle').innerHTML = `Add <code>?project=YOUR_SLUG</code> to the URL.`;
+    $('#projectRef').textContent = "—";
+    $('#generalStatusLabel').textContent = "No data";
     return;
   }
-  
   $('#projectRef').textContent = projectId;
 
-  // Meta
+  // Project meta (public read only if project.public == true via rules)
   onValue(ref(db, `projects/${projectId}`), snap=>{
     const p = snap.val();
-    if(!p) return;
+    if(!p){ $('#projectName').textContent="Project missing"; return; }
     $('#projectName').textContent = p.name || "Status";
-    $('#projectSubtitle').textContent = p.public ? "Public status" : "Private";
+    $('#projectSubtitle').textContent = p.public ? "Public status" : "Private (requires auth)";
   });
 
   // Announcement
@@ -583,17 +501,30 @@ async function resolveProjectId(projectParam){
     updateAnnouncement(ann.text || '');
   });
 
-  // Services
+  // Services (realtime listener; no polling)
   onValue(ref(db, `services/${projectId}`), snap=>{
     const services = snap.val() || {};
     window.__lastServices = services;
-    
-    // Default render
-    const currentRange = $('#statusViewRange').value;
-    renderAllServices(services, currentRange);
-    
+
+    const list = Object.values(services);
+    const container = $('#statusContainer');
+    container.innerHTML = list.length ? list
+      .sort((a,b)=>(a.order??0)-(b.order??0))
+      .map(renderServiceSection).join('')
+      : '<div class="app-section" style="text-align:center;color:var(--subtle);padding:28px">No services yet.</div>';
+
     updateGeneralStatus(services);
-    refreshTimeline();
+    mountServiceBars();
+
+    // timeline refresh if data changes
+    const per = $('#activityPeriod').value;
+    const hash = JSON.stringify(services);
+    if(hash !== lastTimelineHash){
+      lastTimelineHash = hash;
+      buildMasterTimeline(services, per);
+      $('#activityTimeline').innerHTML='';
+      renderNextTimelineSlice();
+    }
   });
 })();
 </script>
