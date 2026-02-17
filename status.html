@@ -9,7 +9,6 @@
 <title>Status</title>
 
 <style>
-/* (Your original look, mostly preserved) */
 :root{
   --bg:#000000;--card:#161b22;--card2:#11141e;--tooltip:#11141e;
   --border:#30363d;--text:#c9d1d9;--subtle:#8b949e;--accent:#58a6ff;
@@ -115,9 +114,6 @@ a:hover{text-decoration:underline}
 
 .status-bar-container{width:780px;max-width:95%;display:flex;flex-direction:column;gap:4px}
 .status-bar{display:flex;width:106%}
-.day-labels{display:flex;gap:3px;font-size:12px;color:var(--subtle)}
-.day-label{width:48px;text-align:center}
-.label-start,.label-end{font-weight:600;color:var(--text)}
 .bar-box{flex:1 1 0;height:20px;border-radius:4px;background:var(--ok);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;min-width:0}
 .bar-box.down{background:var(--down)}
 .bar-box.degraded{background:var(--warning)}
@@ -160,17 +156,51 @@ a:hover{text-decoration:underline}
 /* --- Uptime bars layout (hourly + daily, BetterStack-like spacing) --- */
 .status-bar.hourly{gap:2px}
 .status-bar.daily{gap:4px}
-.day-labels.hourly{justify-content:space-between}
-.day-labels.hourly .day-label{width:auto;flex:0 0 auto;text-align:left}
 /* Optional: subtle day divider for 120h (every 24 hours) */
 .status-bar.hourly .bar-box:nth-child(24n){margin-right:2px}
 
+/* --- NEW: labels around the bar row --- */
+.uptime-row{display:flex;flex-direction:column;gap:6px}
+.uptime-summary{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  font-size:12px;
+  color:var(--subtle);
+  font-weight:600;
+}
+.uptime-summary .uptime-pill{
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:4px 10px;
+  line-height:1.2;
+}
+.bar-meta{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:12px;
+  color:var(--subtle);
+  margin-top:6px;
+  width:106%;
+}
+.bar-meta .label-start,
+.bar-meta .label-end{
+  font-weight:600;
+  color:var(--text);
+}
+.bar-meta .label-end{ text-align:right; }
 
-@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* keep nice on mobile */
 @media (max-width:800px){
   body{padding:24px 0}
   #generalStatusBar,.status-container,.timeline-container{width:95%}
+  .status-bar{width:100%}
+  .bar-meta{width:100%}
 }
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
@@ -316,12 +346,14 @@ function periodToHours(p){
   }[p] || 120;
 }
 
-function formatUptimeLabel(hrs){
-  if(hrs===120) return '120h ago';
-  if(hrs===24) return '24h ago';
-  if(hrs===48) return '48h ago';
-  if(hrs%24===0) return `${hrs/24}d ago`;
-  return `${hrs}h ago`;
+function labelForPeriod(period){
+  if(period.endsWith('h')){
+    const hrs = periodToHours(period);
+    return `${hrs} hours ago`;
+  }
+  const hrs = periodToHours(period);
+  const days = Math.round(hrs/24);
+  return `${days} days ago`;
 }
 
 function floorToHour(ts){ return Math.floor(ts/36e5)*36e5; }
@@ -369,6 +401,43 @@ function startOfDay(ts){
   return d.getTime();
 }
 
+/* --- NEW: BetterStack-ish uptime calculation (hour-based) ---
+   Percent = (totalHours - downHours) / totalHours * 100
+   Only "down" counts as downtime (degraded/maintenance still count as up).
+*/
+function calcUptimePercent(service, rangeStartMs, rangeEndMsInclusive){
+  const changes = getServiceChanges(service);
+  let idx = 0;
+  let cur = 'unlinked';
+
+  // align to hour boundaries
+  const start = floorToHour(rangeStartMs);
+  const end = floorToHour(rangeEndMsInclusive);
+
+  while(idx < changes.length && changes[idx].t <= start){
+    cur = changes[idx].status;
+    idx++;
+  }
+
+  let total = 0;
+  let down = 0;
+
+  for(let ts = start; ts <= end; ts += 36e5){
+    while(idx < changes.length && changes[idx].t <= ts){
+      cur = changes[idx].status;
+      idx++;
+    }
+    const st = cur || 'unlinked';
+    total += 1;
+    if(st === 'down') down += 1;
+  }
+
+  if(total <= 0) return 100;
+  const pct = ((total - down) / total) * 100;
+  // clamp
+  return Math.max(0, Math.min(100, pct));
+}
+
 function renderBars(service){
   const period = $('#uptimePeriod')?.value || DEFAULT_UPTIME_PERIOD;
   const totalHours = periodToHours(period);
@@ -380,15 +449,20 @@ function renderBars(service){
   let cur = 'unlinked';
   const boxes = [];
 
+  let rangeStart = now - totalHours*36e5;
+  let rangeEnd = now;
+
   // ===============================
   // 120 HOURS → CALENDAR ALIGNED
   // ===============================
   if(period === '120h'){
-
     // 5 calendar days including today
     const todayStart = startOfDay(now);
     const start = todayStart - (4 * 24 * 36e5); // 4 days ago 00:00
     const end = currentHour;
+
+    rangeStart = start;
+    rangeEnd = end;
 
     while(idx < changes.length && changes[idx].t <= start){
       cur = changes[idx].status;
@@ -400,88 +474,105 @@ function renderBars(service){
         cur = changes[idx].status;
         idx++;
       }
-
       const status = cur || 'unlinked';
       boxes.push(
-        `<div class="bar-box ${status}" 
-          data-status="${status}" 
-          data-ts="${ts}">
-        </div>`
+        `<div class="bar-box ${status}" data-status="${status}" data-ts="${ts}"></div>`
       );
     }
 
+    const pct = calcUptimePercent(service, rangeStart, rangeEnd);
+    const startLabel = labelForPeriod(period);
     return `
-      <div class="status-bar-container">
-        <div class="status-bar hourly">${boxes.join('')}</div>
+      <div class="uptime-row">
+        <div class="uptime-summary">
+          <span class="uptime-pill">${pct.toFixed(2)}% uptime</span>
+        </div>
+        <div class="status-bar-container">
+          <div class="status-bar hourly">${boxes.join('')}</div>
+        </div>
+        <div class="bar-meta" aria-hidden="true">
+          <span class="label-start">${startLabel}</span>
+          <span class="label-end">Today</span>
+        </div>
       </div>
     `;
   }
 
-// ==================================
-// 14d+ → CALENDAR DAYS INCLUDING TODAY
-// ==================================
-const days = totalHours / 24;
-const todayStart = startOfDay(now);
-const start = todayStart - ((days-1) * 24 * 36e5);
+  // ==================================
+  // 14d+ → CALENDAR DAYS INCLUDING TODAY
+  // ==================================
+  const days = totalHours / 24;
+  const todayStart = startOfDay(now);
+  const start = todayStart - ((days-1) * 24 * 36e5);
+  rangeStart = start;
+  rangeEnd = currentHour;
 
-while(idx < changes.length && changes[idx].t <= start){
-  cur = changes[idx].status;
-  idx++;
-}
-
-for(let d = 0; d < days; d++){
-
-  const dayStart = start + d*24*36e5;
-
-  const isToday = dayStart === todayStart;
-  const dayEnd = isToday ? currentHour + 36e5 : dayStart + 24*36e5;
-
-  let worst = 'operational';
-
-  for(let ts = dayStart; ts < dayEnd; ts += 36e5){
-
-    while(idx < changes.length && changes[idx].t <= ts){
-      cur = changes[idx].status;
-      idx++;
-    }
-
-    const st = cur || 'unlinked';
-
-    if(st === 'down'){ worst = 'down'; break; }
-    if(st === 'degraded' && worst !== 'down'){ worst = 'degraded'; }
-    if(st === 'maintenance' && !['down','degraded'].includes(worst)){ worst = 'maintenance'; }
-    if(st === 'paused' && !['down','degraded','maintenance'].includes(worst)){ worst = 'paused'; }
-    if((st === 'unknown' || st === 'unlinked') && worst === 'operational'){
-      worst = st;
-    }
+  while(idx < changes.length && changes[idx].t <= start){
+    cur = changes[idx].status;
+    idx++;
   }
 
-  // Force today to reflect EXACT current state
-  if(isToday){
-    worst = getStatusAt(service, now);
+  for(let d = 0; d < days; d++){
+    const dayStart = start + d*24*36e5;
+
+    const isToday = dayStart === todayStart;
+    const dayEnd = isToday ? currentHour + 36e5 : dayStart + 24*36e5;
+
+    let worst = 'operational';
+
+    for(let ts = dayStart; ts < dayEnd; ts += 36e5){
+      while(idx < changes.length && changes[idx].t <= ts){
+        cur = changes[idx].status;
+        idx++;
+      }
+      const st = cur || 'unlinked';
+
+      if(st === 'down'){ worst = 'down'; break; }
+      if(st === 'degraded' && worst !== 'down'){ worst = 'degraded'; }
+      if(st === 'maintenance' && !['down','degraded'].includes(worst)){ worst = 'maintenance'; }
+      if(st === 'paused' && !['down','degraded','maintenance'].includes(worst)){ worst = 'paused'; }
+      if((st === 'unknown' || st === 'unlinked') && worst === 'operational'){
+        worst = st;
+      }
+    }
+
+    // Force today to reflect EXACT current state
+    if(isToday){
+      worst = getStatusAt(service, now);
+    }
+
+    boxes.push(
+      `<div class="bar-box ${worst}" data-status="${worst}" data-ts="${dayStart}"></div>`
+    );
   }
 
-  boxes.push(
-    `<div class="bar-box ${worst}" 
-      data-status="${worst}" 
-      data-ts="${dayStart}">
-    </div>`
-  );
-}
+  const pct = calcUptimePercent(service, rangeStart, rangeEnd);
+  const startLabel = labelForPeriod(period);
 
-return `
-  <div class="status-bar-container">
-    <div class="status-bar daily">${boxes.join('')}</div>
-  </div>
-`;
+  return `
+    <div class="uptime-row">
+      <div class="uptime-summary">
+        <span class="uptime-pill">${pct.toFixed(2)}% uptime</span>
+      </div>
+      <div class="status-bar-container">
+        <div class="status-bar daily">${boxes.join('')}</div>
+      </div>
+      <div class="bar-meta" aria-hidden="true">
+        <span class="label-start">${startLabel}</span>
+        <span class="label-end">Today</span>
+      </div>
+    </div>
+  `;
 }
-
 
 function renderServiceSection(service){
   const nowStatus = getStatusAt(service, Date.now());
   const cls = nowStatus==='operational'?'operational':nowStatus;
   return `<div class="app-section">
-    <div class="top-bar"><span class="status-icon ${cls}" aria-hidden="true"></span><span>${escapeHtml(service.name||'Unnamed Service')}</span></div>
+    <div class="top-bar">
+      <span class="status-icon ${cls}" aria-hidden="true"></span>
+      <span>${escapeHtml(service.name||'Unnamed Service')}</span>
+    </div>
     ${renderBars(service)}
   </div>`;
 }
@@ -638,7 +729,7 @@ $('#uptimePeriod').addEventListener('change', ()=>{
   mountServiceBars();
 });
 
-/* ----- Project resolution ----- 
+/* ----- Project resolution -----
    Use: status.html?project=<slug OR projectId>
 */
 function getProjectParam(){
