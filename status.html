@@ -418,51 +418,58 @@ function renderBars(service){
   }
 
   // ==================================
-  // 14d+ → CALENDAR DAYS INCLUDING TODAY
-  // ==================================
-  const days = totalHours / 24;
-  const todayStart = startOfDay(now);
-  const start = todayStart - ((days-1) * 24 * 36e5);
+// 14d+ → CALENDAR DAYS INCLUDING TODAY
+// ==================================
+const days = totalHours / 24;
+const todayStart = startOfDay(now);
+const start = todayStart - ((days-1) * 24 * 36e5);
 
-  while(idx < changes.length && changes[idx].t <= start){
-    cur = changes[idx].status;
-    idx++;
-  }
+while(idx < changes.length && changes[idx].t <= start){
+  cur = changes[idx].status;
+  idx++;
+}
 
-  for(let d = 0; d < days; d++){
-    const dayStart = start + d*24*36e5;
-    const dayEnd = dayStart + 24*36e5;
+for(let d = 0; d < days; d++){
 
-    let worst = 'operational';
+  const dayStart = start + d*24*36e5;
 
-    for(let ts = dayStart; ts < dayEnd; ts += 36e5){
-      while(idx < changes.length && changes[idx].t <= ts){
-        cur = changes[idx].status;
-        idx++;
-      }
+  // If this is today → only go until current hour
+  const isToday = dayStart === todayStart;
+  const dayEnd = isToday ? currentHour + 36e5 : dayStart + 24*36e5;
 
-      const st = cur || 'unlinked';
+  let worst = 'operational';
 
-      if(st === 'down'){ worst = 'down'; break; }
-      if(st === 'degraded' && worst !== 'down'){ worst = 'degraded'; }
-      if(st === 'maintenance' && !['down','degraded'].includes(worst)){ worst = 'maintenance'; }
-      if(st === 'paused' && !['down','degraded','maintenance'].includes(worst)){ worst = 'paused'; }
+  for(let ts = dayStart; ts < dayEnd; ts += 36e5){
+
+    while(idx < changes.length && changes[idx].t <= ts){
+      cur = changes[idx].status;
+      idx++;
     }
 
-    boxes.push(
-      `<div class="bar-box ${worst}" 
-        data-status="${worst}" 
-        data-ts="${dayStart}">
-      </div>`
-    );
+    const st = cur || 'unlinked';
+
+    if(st === 'down'){ worst = 'down'; break; }
+    if(st === 'degraded' && worst !== 'down'){ worst = 'degraded'; }
+    if(st === 'maintenance' && !['down','degraded'].includes(worst)){ worst = 'maintenance'; }
+    if(st === 'paused' && !['down','degraded','maintenance'].includes(worst)){ worst = 'paused'; }
+    if((st === 'unknown' || st === 'unlinked') && worst === 'operational'){
+      worst = st;
+    }
   }
 
-  return `
-    <div class="status-bar-container">
-      <div class="status-bar daily">${boxes.join('')}</div>
-    </div>
-  `;
+  // If today → force it to reflect EXACT CURRENT state
+  if(isToday){
+    worst = getStatusAt(service, now);
+  }
+
+  boxes.push(
+    `<div class="bar-box ${worst}" 
+      data-status="${worst}" 
+      data-ts="${dayStart}">
+    </div>`
+  );
 }
+
 
 function renderServiceSection(service){
   const nowStatus = getStatusAt(service, Date.now());
