@@ -114,11 +114,11 @@ a:hover{text-decoration:underline}
 .status-icon.unlinked{background:var(--unlinked)}
 
 .status-bar-container{width:780px;max-width:95%;display:flex;flex-direction:column;gap:4px}
-.status-bar{display:flex;gap:3px}
+.status-bar{display:flex;width:100%}
 .day-labels{display:flex;gap:3px;font-size:12px;color:var(--subtle)}
 .day-label{width:48px;text-align:center}
 .label-start,.label-end{font-weight:600;color:var(--text)}
-.bar-box{width:48px;height:14px;border-radius:4px;background:var(--ok);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.bar-box{flex:1 1 0;height:14px;border-radius:4px;background:var(--ok);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;min-width:0}
 .bar-box.down{background:var(--down)}
 .bar-box.degraded{background:var(--warning)}
 .bar-box.paused{background:var(--paused)}
@@ -157,11 +157,14 @@ a:hover{text-decoration:underline}
 .copy-btn{margin-left:auto;background:0 0;border:none;color:var(--accent);cursor:pointer;font-size:12px}
 .copy-btn:hover{text-decoration:underline}
 
-/* --- Hourly uptime bars (BetterStack-like) --- */
-.status-bar.hourly{gap:2px;flex-wrap:nowrap;overflow:hidden}
-.bar-box.hour{width:6px;height:14px;border-radius:3px}
+/* --- Uptime bars layout (hourly + daily, BetterStack-like spacing) --- */
+.status-bar.hourly{gap:2px}
+.status-bar.daily{gap:4px}
 .day-labels.hourly{justify-content:space-between}
 .day-labels.hourly .day-label{width:auto;flex:0 0 auto;text-align:left}
+/* Optional: subtle day divider for 120h (every 24 hours) */
+.status-bar.hourly .bar-box:nth-child(24n){margin-right:6px}
+
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (max-width:800px){
@@ -213,11 +216,12 @@ a:hover{text-decoration:underline}
   <div class="timeline-header" style="margin-bottom:12px;">
     <h2 class="timeline-title" style="color:var(--text);">Uptime</h2>
     <select class="period-selector" id="uptimePeriod" aria-label="Select uptime graph period">
-      <option value="24h">Last 24 hours</option>
-      <option value="48h">Last 48 hours</option>
-      <option value="7d" selected>Last 7 days</option>
+      <option value="120h" selected>Last 120 hours</option>
       <option value="14d">Last 14 days</option>
       <option value="30d">Last 30 days</option>
+      <option value="60d">Last 60 days</option>
+      <option value="90d">Last 90 days</option>
+      <option value="120d">Last 120 days</option>
     </select>
   </div>
   <div class="app-section">
@@ -283,7 +287,7 @@ document.addEventListener('click', e=>{
 window.addEventListener('online', ()=> $('#offlineBanner').style.display='none');
 window.addEventListener('offline', ()=> $('#offlineBanner').style.display='block');
 
-const DEFAULT_UPTIME_PERIOD = '7d';
+const DEFAULT_UPTIME_PERIOD = '120h';
 const STATUS_NAMES = { operational:'Operational', down:'Down', degraded:'Degraded', paused:'Paused', maintenance:'Maintenance', unknown:'Unknown', unlinked:'Unlinked' };
 
 const tip = $('#statusTooltip');
@@ -298,10 +302,22 @@ function positionTooltip(e){
 }
 
 function periodToHours(p){
-  return { '24h':24,'48h':48,'7d':168,'14d':336,'30d':720,'90d':2160,'120d':2880 }[p] || 168;
+  return {
+    '120h':120,
+    '14d':14*24,
+    '30d':30*24,
+    '60d':60*24,
+    '90d':90*24,
+    '120d':120*24,
+    // keep compatibility with older values if they appear in URLs/localStorage
+    '24h':24,
+    '48h':48,
+    '7d':7*24
+  }[p] || 120;
 }
 
 function formatUptimeLabel(hrs){
+  if(hrs===120) return '120h ago';
   if(hrs===24) return '24h ago';
   if(hrs===48) return '48h ago';
   if(hrs%24===0) return `${hrs/24}d ago`;
@@ -350,37 +366,79 @@ function getStatusAt(service, ts){
 
 function renderBars(service){
   const period = $('#uptimePeriod')?.value || DEFAULT_UPTIME_PERIOD;
-  const hrs = periodToHours(period);
+  const totalHours = periodToHours(period);
   const end = floorToHour(Date.now());
-  const start = end - (hrs-1)*36e5;
+  const start = end - (totalHours-1)*36e5;
 
   const changes = getServiceChanges(service);
-  let boxes = [];
-  // Walk once to compute hourly status (propagates automatically)
   let idx = 0;
   let cur = 'unlinked';
+
+  // Initialize current status at the start timestamp
   while(idx < changes.length && changes[idx].t <= start){
     cur = changes[idx].status;
     idx++;
   }
 
-  for(let ts = start; ts <= end; ts += 36e5){
-    while(idx < changes.length && changes[idx].t <= ts){
-      cur = changes[idx].status;
-      idx++;
+  const boxes = [];
+
+  // ===== 120 HOURS → HOURLY (120 rectangles) =====
+  if(period === '120h'){
+    for(let ts = start; ts <= end; ts += 36e5){
+      while(idx < changes.length && changes[idx].t <= ts){
+        cur = changes[idx].status;
+        idx++;
+      }
+      const status = cur || 'unlinked';
+      const cls = status==='operational'?'operational':status;
+      boxes.push(`<div class="bar-box ${cls}" data-status="${status}" data-ts="${ts}" aria-label="${new Date(ts).toLocaleString()} ${STATUS_NAMES[status]||status}"></div>`);
     }
-    const status = cur || 'unlinked';
-    const cls = status==='operational'?'operational':status;
-    boxes.push(`<div class="bar-box hour ${cls}" data-status="${status}" data-ts="${ts}" aria-label="${new Date(ts).toLocaleString()} ${STATUS_NAMES[status]||status}"></div>`);
+
+    const labels = `
+      <div class="day-labels hourly">
+        <div class="day-label label-start">${formatUptimeLabel(totalHours)}</div>
+        <div class="day-label label-end">Now</div>
+      </div>
+    `;
+
+    return `<div class="status-bar-container"><div class="status-bar hourly">${boxes.join('')}</div>${labels}</div>`;
+  }
+
+  // ===== 14d+ → DAILY AGGREGATION (1 rectangle/day) =====
+  const days = Math.round(totalHours / 24);
+
+  for(let d=0; d<days; d++){
+    const dayStart = start + d*24*36e5;
+    const dayEnd = dayStart + 24*36e5;
+
+    // Worst-of-day: down > degraded > maintenance > paused > operational/unknown/unlinked
+    let worst = 'operational';
+
+    for(let ts = dayStart; ts < dayEnd; ts += 36e5){
+      while(idx < changes.length && changes[idx].t <= ts){
+        cur = changes[idx].status;
+        idx++;
+      }
+      const st = cur || 'unlinked';
+      if(st === 'down'){ worst = 'down'; break; }
+      if(st === 'degraded' && worst !== 'down'){ worst = 'degraded'; }
+      if(st === 'maintenance' && !['down','degraded'].includes(worst)){ worst = 'maintenance'; }
+      if(st === 'paused' && !['down','degraded','maintenance'].includes(worst)){ worst = 'paused'; }
+      if((st === 'unknown' || st === 'unlinked') && worst === 'operational'){ worst = st; }
+    }
+
+    const cls = worst==='operational'?'operational':worst;
+    boxes.push(`<div class="bar-box ${cls}" data-status="${worst}" data-ts="${dayStart}" aria-label="${new Date(dayStart).toLocaleDateString()} ${STATUS_NAMES[worst]||worst}"></div>`);
   }
 
   const labels = `
     <div class="day-labels hourly">
-      <div class="day-label label-start">${formatUptimeLabel(hrs)}</div>
+      <div class="day-label label-start">${formatUptimeLabel(totalHours)}</div>
       <div class="day-label label-end">Now</div>
     </div>
   `;
-  return `<div class="status-bar-container"><div class="status-bar hourly">${boxes.join('')}</div>${labels}</div>`;
+
+  return `<div class="status-bar-container"><div class="status-bar daily">${boxes.join('')}</div>${labels}</div>`;
 }
 
 function renderServiceSection(service){
